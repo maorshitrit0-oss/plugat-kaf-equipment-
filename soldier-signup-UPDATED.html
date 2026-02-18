@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>חתימה על ציוד</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        /* כאן נשאר ה-CSS המקורי שלך */
+        body { font-family: 'Assistant', sans-serif; display: flex; justify-content: center; padding: 20px; background: #e8e8e8; }
+        .form-container { background: white; padding: 30px; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 15px; }
+        input, select { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 15px; background: #2c5f2d; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="form-container" id="mainContent">
+        <h2>חתימה על ציוד - פלוגה כ׳</h2>
+        <form id="signupForm">
+            <div class="form-group">
+                <label>שם מלא:</label>
+                <input type="text" id="soldierName" required>
+            </div>
+            <div class="form-group">
+                <label>מחלקה:</label>
+                <select id="unit" required>
+                    <option value="">בחר מחלקה</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="מפקדה">מפקדה</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>ציוד (הפרד בפסיקים):</label>
+                <input type="text" id="equipment" placeholder="למשל: אפוד, קסדה, ברכיות" required>
+            </div>
+            <button type="submit" class="btn" id="submitBtn">חתום ואשר</button>
+        </form>
+    </div>
+
+    <script>
+        const firebaseConfig = { databaseURL: "https://plugat-kaf-default-rtdb.firebaseio.com" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerText = "שומר...";
+
+            const data = {
+                soldierName: document.getElementById('soldierName').value,
+                unit: document.getElementById('unit').value,
+                equipment: document.getElementById('equipment').value.split(','),
+                timestamp: new Date().toISOString()
+            };
+
+            try {
+                await db.ref('checkouts').push(data);
+                document.getElementById('mainContent').innerHTML = `
+                    <div style="text-align:center; padding: 40px;">
+                        <h2 style="color: #2c5f2d;">✓ החתימה נקלטה!</h2>
+                        <p>תודה, ${data.soldierName}. הציוד רשום על שמך.</p>
+                        <button class="btn" onclick="location.reload()">חתימה נוספת</button>
+                    </div>`;
+            } catch (error) {
+                alert("שגיאה בשמירה: " + error.message);
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

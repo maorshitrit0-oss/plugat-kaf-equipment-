@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>דיווח תקלה - פלוגה כ׳ גדוד 43</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Assistant:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Assistant', sans-serif;
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        .form-container {
+            max-width: 600px;
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            padding: 2.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            border: 2px solid #f57c00;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid #fff3e0;
+        }
+
+        .title {
+            font-size: 1.8rem;
+            color: #e65100;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #444;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #ffe0b2;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #f57c00;
+            box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            background: #f57c00;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #e65100;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .success-container {
+            text-align: center;
+            display: none;
+        }
+
+        .success-icon {
+            font-size: 4rem;
+            color: #4caf50;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="form-container" id="main-content">
+        <div class="header">
+            <div class="title">דיווח תקלה בציוד</div>
+            <div class="subtitle">פלוגה כ׳ - גדוד 43</div>
+        </div>
+
+        <form id="faultForm">
+            <div class="form-group">
+                <label for="soldierName">שם החייל המדווח:</label>
+                <input type="text" id="soldierName" placeholder="הכנס שם מלא" required>
+            </div>
+
+            <div class="form-group">
+                <label for="unit">מחלקה:</label>
+                <select id="unit" required>
+                    <option value="">בחר מחלקה</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="מפקדה">מפקדה</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="equipmentType">סוג הציוד התקול:</label>
+                <input type="text" id="equipmentType" placeholder="למשל: מכשיר קשר, נשק, אפוד..." required>
+            </div>
+
+            <div class="form-group">
+                <label for="description">תיאור התקלה:</label>
+                <textarea id="description" placeholder="פרט מה הבעיה בציוד..." required></textarea>
+            </div>
+
+            <button type="submit" class="btn" id="submitBtn">שלח דיווח למפקדה</button>
+        </form>
+    </div>
+
+    <div class="form-container success-container" id="success-content">
+        <div class="success-icon">✓</div>
+        <div class="title">הדיווח נשלח בהצלחה!</div>
+        <p style="margin-bottom: 2rem;">התקלה נרשמה במערכת והועברה לטיפול האפסנאות.</p>
+        <button class="btn" onclick="location.reload()">דווח תקלה נוספת</button>
+    </div>
+
+    <script>
+        // אתחול Firebase
+        const firebaseConfig = {
+            databaseURL: "https://plugat-kaf-default-rtdb.firebaseio.com"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // טיפול בשליחת הטופס
+        document.getElementById('faultForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerText = "שולח דיווח...";
+
+            const faultData = {
+                soldierName: document.getElementById('soldierName').value,
+                unit: document.getElementById('unit').value,
+                equipmentType: document.getElementById('equipmentType').value,
+                description: document.getElementById('description').value,
+                status: 'pending', // סטטוס ראשוני
+                date: new Date().toISOString()
+            };
+
+            try {
+                // שמירה ל-Firebase תחת נתיב 'faults'
+                await db.ref('faults').push(faultData);
+                
+                // מעבר למסך הצלחה
+                document.getElementById('main-content').style.display = 'none';
+                document.getElementById('success-content').style.display = 'block';
+                
+            } catch (error) {
+                console.error("Error saving fault:", error);
+                alert("שגיאה בשליחת הדיווח. וודא שיש לך חיבור לאינטרנט ונסה שוב.");
+                btn.disabled = false;
+                btn.innerText = "שלח דיווח למפקדה";
+            }
+        });
+    </script>
+</body>
+</html>
