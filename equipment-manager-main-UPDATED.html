@@ -9,392 +9,50 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Assistant:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Assistant', sans-serif;
-            background: #f5f5f5;
-            color: #333;
-        }
-
-        .header {
-            background: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            border-bottom: 3px solid #2c5f2d;
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-        }
-
-        .logo-container {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .company-logo {
-            width: 60px;
-            height: 60px;
-            object-fit: contain;
-        }
-
-        .header-title {
-            font-family: 'Heebo', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #2c5f2d;
-        }
-
-        .header-subtitle {
-            font-size: 0.9rem;
-            color: #666;
-        }
-
-        .nav {
-            display: flex;
-            gap: 0.5rem;
-            margin-right: auto;
-            flex-wrap: wrap;
-        }
-
-        .nav-btn {
-            background: white;
-            border: 2px solid #ddd;
-            color: #333;
-            padding: 0.6rem 1.2rem;
-            cursor: pointer;
-            font-family: 'Assistant', sans-serif;
-            font-size: 0.95rem;
-            font-weight: 600;
-            border-radius: 6px;
-            transition: all 0.2s;
-        }
-
-        .nav-btn:hover {
-            background: #f8f8f8;
-            border-color: #2c5f2d;
-        }
-
-        .nav-btn.active {
-            background: #2c5f2d;
-            color: white;
-            border-color: #2c5f2d;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 2rem auto;
-            padding: 0 2rem;
-        }
-
-        .section {
-            background: white;
-            border-radius: 8px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            border: 1px solid #e0e0e0;
-        }
-
-        .section-title {
-            font-family: 'Heebo', sans-serif;
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: #2c5f2d;
-            margin-bottom: 1.5rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid #2c5f2d;
-        }
-
-        .table-container {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.95rem;
-        }
-
-        thead {
-            background: #2c5f2d;
-            color: white;
-        }
-
-        th {
-            padding: 0.8rem;
-            text-align: center;
-            font-weight: 600;
-            border: 1px solid #ddd;
-        }
-
-        td {
-            padding: 0.8rem;
-            border: 1px solid #ddd;
-            text-align: center;
-        }
-
-        tbody tr:nth-child(even) {
-            background: #f9f9f9;
-        }
-
-        tbody tr:hover {
-            background: #f0f7f0;
-        }
-
-        .unit-header {
-            background: #2c5f2d;
-            color: white;
-            font-weight: 700;
-            text-align: right;
-            padding: 1rem;
-        }
-
-        .btn {
-            background: #2c5f2d;
-            color: white;
-            border: none;
-            padding: 0.7rem 1.5rem;
-            border-radius: 6px;
-            font-family: 'Assistant', sans-serif;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn:hover {
-            background: #1e4620;
-        }
-
-        .btn-secondary {
-            background: #666;
-        }
-
-        .btn-danger {
-            background: #d32f2f;
-        }
-
-        .btn-small {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.85rem;
-        }
-
-        .link-box {
-            background: #f5f5f5;
-            padding: 1rem;
-            border-radius: 6px;
-            margin-bottom: 1rem;
-            border-right: 4px solid #2c5f2d;
-        }
-
-        .link-header {
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            color: #2c5f2d;
-        }
-
-        .link-url {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-        }
-
-        .link-url input {
-            flex: 1;
-            padding: 0.6rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 0.9rem;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 6px;
-            border: 1px solid #e0e0e0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .stat-label {
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-value {
-            font-family: 'Heebo', sans-serif;
-            font-size: 2rem;
-            font-weight: 900;
-            color: #2c5f2d;
-        }
-
-        .report-preview {
-            background: #f5f5f5;
-            padding: 1.5rem;
-            border-radius: 6px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            white-space: pre-wrap;
-            border: 1px solid #ddd;
-            max-height: 500px;
-            overflow-y: auto;
-        }
-
-        .alert {
-            padding: 1rem;
-            border-radius: 6px;
-            margin-bottom: 1rem;
-            font-weight: 600;
-        }
-
-        .alert-success {
-            background: #e8f5e9;
-            border-right: 4px solid #4caf50;
-            color: #2e7d32;
-        }
-
-        .alert-error {
-            background: #ffebee;
-            border-right: 4px solid #f44336;
-            color: #c62828;
-        }
-
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-
-        .modal {
-            background: white;
-            border-radius: 8px;
-            padding: 2rem;
-            max-width: 600px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid #e0e0e0;
-        }
-
-        .modal-title {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: #2c5f2d;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #666;
-        }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.3rem;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        input, select, textarea {
-            width: 100%;
-            padding: 0.6rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-family: 'Assistant', sans-serif;
-            font-size: 0.95rem;
-        }
-
-        textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-
-        .fault-item {
-            background: #fff3e0;
-            border-right: 4px solid #ff9800;
-            padding: 1rem;
-            border-radius: 6px;
-            margin-bottom: 1rem;
-        }
-
-        .fault-resolved {
-            background: #e8f5e9;
-            border-right-color: #4caf50;
-        }
-
-        .editable-cell {
-            cursor: pointer;
-            min-width: 80px;
-        }
-
-        .editable-cell:hover {
-            background: #fffde7;
-        }
-
-        .editable-cell input {
-            width: 100%;
-            padding: 0.3rem;
-            border: 2px solid #2c5f2d;
-            border-radius: 3px;
-        }
-
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                padding: 1rem;
-            }
-
-            .nav {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .container {
-                padding: 0 1rem;
-            }
-
-            table {
-                font-size: 0.85rem;
-            }
-
-            th, td {
-                padding: 0.5rem 0.3rem;
-            }
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Assistant', sans-serif; background: #f5f5f5; color: #333; }
+        .header { background: white; padding: 1rem 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-bottom: 3px solid #2c5f2d; display: flex; align-items: center; gap: 2rem; }
+        .logo-container { display: flex; align-items: center; gap: 1rem; }
+        .company-logo { width: 60px; height: 60px; object-fit: contain; }
+        .header-title { font-family: 'Heebo', sans-serif; font-size: 1.5rem; font-weight: 700; color: #2c5f2d; }
+        .header-subtitle { font-size: 0.9rem; color: #666; }
+        .nav { display: flex; gap: 0.5rem; margin-right: auto; flex-wrap: wrap; }
+        .nav-btn { background: white; border: 2px solid #ddd; color: #333; padding: 0.6rem 1.2rem; cursor: pointer; font-family: 'Assistant', sans-serif; font-size: 0.95rem; font-weight: 600; border-radius: 6px; transition: all 0.2s; }
+        .nav-btn:hover { background: #f8f8f8; border-color: #2c5f2d; }
+        .nav-btn.active { background: #2c5f2d; color: white; border-color: #2c5f2d; }
+        .container { max-width: 1400px; margin: 2rem auto; padding: 0 2rem; }
+        .section { background: white; border-radius: 8px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #e0e0e0; }
+        .section-title { font-family: 'Heebo', sans-serif; font-size: 1.3rem; font-weight: 700; color: #2c5f2d; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid #2c5f2d; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+        thead { background: #2c5f2d; color: white; }
+        th { padding: 0.8rem; text-align: center; font-weight: 600; border: 1px solid #ddd; }
+        td { padding: 0.8rem; border: 1px solid #ddd; text-align: center; }
+        tbody tr:nth-child(even) { background: #f9f9f9; }
+        tbody tr:hover { background: #f0f7f0; }
+        .btn { background: #2c5f2d; color: white; border: none; padding: 0.7rem 1.5rem; border-radius: 6px; font-family: 'Assistant', sans-serif; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn:hover { background: #1e4620; }
+        .btn-secondary { background: #666; }
+        .btn-danger { background: #d32f2f; }
+        .btn-small { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+        .link-box { background: #f5f5f5; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; border-right: 4px solid #2c5f2d; }
+        .link-header { font-weight: 700; margin-bottom: 0.5rem; color: #2c5f2d; }
+        .link-url { display: flex; gap: 0.5rem; align-items: center; }
+        .link-url input { flex: 1; padding: 0.6rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: 6px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .stat-label { font-size: 0.9rem; color: #666; margin-bottom: 0.5rem; }
+        .stat-value { font-family: 'Heebo', sans-serif; font-size: 2rem; font-weight: 900; color: #2c5f2d; }
+        .report-preview { background: #f5f5f5; padding: 1.5rem; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 0.9rem; white-space: pre-wrap; border: 1px solid #ddd; max-height: 500px; overflow-y: auto; }
+        .alert { padding: 1rem; border-radius: 6px; margin-bottom: 1rem; font-weight: 600; }
+        .alert-success { background: #e8f5e9; border-right: 4px solid #4caf50; color: #2e7d32; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.9rem; }
+        input, select, textarea { width: 100%; padding: 0.6rem; border: 1px solid #ddd; border-radius: 4px; font-family: 'Assistant', sans-serif; font-size: 0.95rem; }
+        .fault-item { background: #fff3e0; border-right: 4px solid #ff9800; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; text-align: right; }
+        .fault-resolved { background: #e8f5e9; border-right-color: #4caf50; }
+        .editable-cell { cursor: pointer; min-width: 80px; }
+        .editable-cell:hover { background: #fffde7; }
     </style>
 </head>
 <body>
@@ -403,7 +61,7 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        const LOGO_SVG = `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAA...`; // הלוגו המקורי שלך כאן
+        const LOGO_SVG = `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAA...`; 
 
         const UNITS = ['מחלקה 1', 'מחלקה 2', 'מחלקה 3', 'חפק', 'חמל', 'מפלג'];
 
@@ -426,7 +84,6 @@
                     const response = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/' + key + '.json');
                     if (!response.ok) return null;
                     const data = await response.json();
-                    
                     if (data && typeof data === 'object' && !Array.isArray(data)) {
                         return Object.values(data);
                     }
@@ -441,10 +98,8 @@
         const initData = async () => {
             const checkouts = await storage.load('checkouts');
             if (!checkouts) await storage.save('checkouts', []);
-            
             const faults = await storage.load('faults');
             if (!faults) await storage.save('faults', []);
-            
             const spareEquipment = await storage.load('spareEquipment');
             if (!spareEquipment) await storage.save('spareEquipment', []);
         };
@@ -461,7 +116,6 @@
                     await loadData();
                 };
                 init();
-                
                 const interval = setInterval(loadData, 3000);
                 return () => clearInterval(interval);
             }, []);
@@ -470,16 +124,13 @@
                 const checkoutsData = await storage.load('checkouts');
                 const faultsData = await storage.load('faults');
                 const spareData = await storage.load('spareEquipment');
-                
                 setCheckouts(checkoutsData || []);
                 setFaults(faultsData || []);
                 setSpareEquipment(spareData || []);
             };
 
             const updateFaultStatus = async (faultId, status) => {
-                const newFaults = faults.map(f => 
-                    f.id === faultId ? { ...f, status } : f
-                );
+                const newFaults = faults.map(f => f.id === faultId ? { ...f, status } : f);
                 await storage.save('faults', newFaults);
                 setFaults(newFaults);
             };
@@ -493,9 +144,7 @@
             };
 
             const updateCheckout = async (id, field, value) => {
-                const newCheckouts = checkouts.map(c => 
-                    c.id === id ? { ...c, [field]: value } : c
-                );
+                const newCheckouts = checkouts.map(c => c.id === id ? { ...c, [field]: value } : c);
                 await storage.save('checkouts', newCheckouts);
                 setCheckouts(newCheckouts);
             };
@@ -507,9 +156,7 @@
             };
 
             const updateSpareEquipment = async (id, field, value) => {
-                const newSpare = spareEquipment.map(s => 
-                    s.id === id ? { ...s, [field]: value } : s
-                );
+                const newSpare = spareEquipment.map(s => s.id === id ? { ...s, [field]: value } : s);
                 await storage.save('spareEquipment', newSpare);
                 setSpareEquipment(newSpare);
             };
@@ -540,21 +187,12 @@
                             <button className={`nav-btn ${currentView === 'faults' ? 'active' : ''}`} onClick={() => setCurrentView('faults')}>תקלות ({faults.filter(f => f.status === 'pending').length})</button>
                         </nav>
                     </header>
-
                     <main className="container">
-                        {currentView === 'dashboard' && (
-                            <DashboardView checkouts={checkouts} faults={faults} deleteCheckout={deleteCheckout} updateCheckout={updateCheckout} />
-                        )}
-                        {currentView === 'spare' && (
-                            <SpareEquipmentView spareEquipment={spareEquipment} addSpareEquipment={addSpareEquipment} updateSpareEquipment={updateSpareEquipment} deleteSpareEquipment={deleteSpareEquipment} />
-                        )}
+                        {currentView === 'dashboard' && <DashboardView checkouts={checkouts} faults={faults} deleteCheckout={deleteCheckout} updateCheckout={updateCheckout} />}
+                        {currentView === 'spare' && <SpareEquipmentView spareEquipment={spareEquipment} addSpareEquipment={addSpareEquipment} updateSpareEquipment={updateSpareEquipment} deleteSpareEquipment={deleteSpareEquipment} />}
                         {currentView === 'links' && <LinksView />}
-                        {currentView === 'report' && (
-                            <ReportView checkouts={checkouts} faults={faults} />
-                        )}
-                        {currentView === 'faults' && (
-                            <FaultsView faults={faults} updateFaultStatus={updateFaultStatus} />
-                        )}
+                        {currentView === 'report' && <ReportView checkouts={checkouts} faults={faults} />}
+                        {currentView === 'faults' && <FaultsView faults={faults} updateFaultStatus={updateFaultStatus} />}
                     </main>
                 </div>
             );
@@ -563,15 +201,10 @@
         function DashboardView({ checkouts, faults, deleteCheckout, updateCheckout }) {
             const totalSoldiers = checkouts.length;
             const pendingFaults = faults.filter(f => f.status === 'pending').length;
-
             const EditableCell = ({ value, onChange, type = 'text' }) => {
                 const [isEditing, setIsEditing] = useState(false);
                 const [tempValue, setTempValue] = useState(value);
-
-                if (!isEditing) {
-                    return <td className="editable-cell" onClick={() => setIsEditing(true)}>{value || '-'}</td>;
-                }
-
+                if (!isEditing) return <td className="editable-cell" onClick={() => setIsEditing(true)}>{value || '-'}</td>;
                 return (
                     <td>
                         <input type={type} value={tempValue} onChange={(e) => setTempValue(e.target.value)}
@@ -581,14 +214,12 @@
                     </td>
                 );
             };
-
             return (
                 <div>
                     <div className="stats-grid">
                         <div className="stat-card"><div className="stat-label">סה״כ חיילים</div><div className="stat-value">{totalSoldiers}</div></div>
                         <div className="stat-card"><div className="stat-label">תקלות פתוחות</div><div className="stat-value" style={{ color: pendingFaults > 0 ? '#d32f2f' : '#4caf50' }}>{pendingFaults}</div></div>
                     </div>
-
                     {UNITS.map(unitName => {
                         const unitSoldiers = checkouts.filter(c => c.unit === unitName);
                         if (unitSoldiers.length === 0) return null;
@@ -623,14 +254,12 @@
         function SpareEquipmentView({ spareEquipment, addSpareEquipment, updateSpareEquipment, deleteSpareEquipment }) {
             const [showAddForm, setShowAddForm] = useState(false);
             const [newItem, setNewItem] = useState({ type: '', quantity: '', notes: '' });
-
             const handleAdd = async () => {
-                if (!newItem.type || !newItem.quantity) { alert('אנא מלא את כל השדות'); return; }
+                if (!newItem.type || !newItem.quantity) return alert('אנא מלא את כל השדות');
                 await addSpareEquipment(newItem);
                 setNewItem({ type: '', quantity: '', notes: '' });
                 setShowAddForm(false);
             };
-
             return (
                 <div className="section">
                     <h2 className="section-title">ציוד ספייר</h2>
@@ -664,7 +293,6 @@
             const signupUrl = baseUrl + 'soldier-signup.html';
             const faultUrl = baseUrl + 'fault-report.html';
             const copy = (url) => { navigator.clipboard.writeText(url); alert('הקישור הועתק'); };
-
             return (
                 <div className="section">
                     <h2 className="section-title">קישורים לחיילים</h2>
@@ -678,7 +306,6 @@
             const [isEditing, setIsEditing] = useState(false);
             const [editedReport, setEditedReport] = useState('');
             const [savedReport, setSavedReport] = useState('');
-
             useEffect(() => {
                 const load = async () => {
                     const res = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/dailyReport.json');
@@ -686,7 +313,6 @@
                 };
                 load();
             }, []);
-
             const generateReport = () => {
                 if (savedReport) return savedReport;
                 let report = 'דוח צ\n*פלוגה כ׳*\n\n';
@@ -698,7 +324,6 @@
                 });
                 return report;
             };
-
             const handleSave = async () => {
                 await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/dailyReport.json', {
                     method: 'PUT', body: JSON.stringify({ content: editedReport })
@@ -706,7 +331,6 @@
                 setSavedReport(editedReport);
                 setIsEditing(false);
             };
-
             return (
                 <div className="section">
                     <h2 className="section-title">דוח יומי</h2>
@@ -730,8 +354,7 @@
                 <div className="section">
                     <h2 className="section-title">תקלות</h2>
                     {faults.filter(f => f.status === 'pending').map(f => (
-                        <div key={f.id} className="fault-item">
-                            {f.soldierName}: {f.description}
+                        <div key={f.id} className="fault-item">{f.soldierName}: {f.description}
                             <button className="btn btn-small" onClick={() => updateFaultStatus(f.id, 'resolved')}>סמן כטופל</button>
                         </div>
                     ))}
