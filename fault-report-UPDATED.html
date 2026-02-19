@@ -3,69 +3,262 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>דיווח תקלה - פלוגה כ׳</title>
+    <title>מערכת לניהול קשר פלוגתי</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Assistant:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Assistant', sans-serif; background: #f5f5f5; padding: 20px; }
-        .card { background: white; max-width: 500px; margin: 0 auto; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-top: 5px solid #2c5f2d; }
-        h2 { color: #2c5f2d; text-align: center; margin-bottom: 20px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
-        .btn { width: 100%; background: #2c5f2d; color: white; border: none; padding: 12px; border-radius: 4px; font-size: 1.1rem; cursor: pointer; margin-top: 10px; }
-        .alert { background: #e8f5e9; color: #2e7d32; padding: 15px; border-radius: 4px; text-align: center; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Assistant', sans-serif; background: #f5f5f5; color: #333; }
+        .header { background: white; padding: 1rem 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-bottom: 3px solid #2c5f2d; display: flex; align-items: center; gap: 2rem; }
+        .logo-container { display: flex; align-items: center; gap: 1.5rem; }
+        .company-logo { width: 120px; height: auto; object-fit: contain; }
+        .header-title { font-family: 'Heebo', sans-serif; font-size: 1.6rem; font-weight: 800; color: #2c5f2d; }
+        .nav { display: flex; gap: 0.5rem; margin-right: auto; flex-wrap: wrap; }
+        .nav-btn { background: white; border: 2px solid #ddd; color: #333; padding: 0.6rem 1.2rem; cursor: pointer; font-family: 'Assistant', sans-serif; font-size: 0.95rem; font-weight: 600; border-radius: 6px; transition: all 0.2s; }
+        .nav-btn.active { background: #2c5f2d; color: white; border-color: #2c5f2d; }
+        .container { max-width: 1400px; margin: 2rem auto; padding: 0 2rem; }
+        .section { background: white; border-radius: 8px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #e0e0e0; }
+        .section-title { font-family: 'Heebo', sans-serif; font-size: 1.4rem; font-weight: 700; color: #2c5f2d; margin-bottom: 1.5rem; border-bottom: 2px solid #2c5f2d; padding-bottom: 0.5rem; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: #2c5f2d; color: white; }
+        th, td { padding: 1rem; border: 1px solid #ddd; text-align: center; }
+        tbody tr:nth-child(even) { background: #f9f9f9; }
+        .editable-cell { cursor: pointer; min-width: 100px; }
+        .editable-cell:hover { background: #fffde7; outline: 1px dashed #2c5f2d; }
+        .editable-cell input { width: 100%; padding: 0.4rem; border: 2px solid #2c5f2d; border-radius: 4px; text-align: center; font-family: inherit; }
+        .btn { background: #2c5f2d; color: white; border: none; padding: 0.7rem 1.5rem; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn-danger { background: #d32f2f; }
+        .btn-small { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+        .report-preview { background: #f9f9f9; padding: 1.5rem; border-radius: 6px; border: 1px solid #ccc; white-space: pre-wrap; direction: rtl; text-align: right; line-height: 1.5; font-family: 'Courier New', monospace; }
+        .fault-item { background: #fff3e0; border-right: 5px solid #ff9800; padding: 1.2rem; border-radius: 6px; margin-bottom: 1rem; text-align: right; }
+        .fault-resolved { background: #e8f5e9; border-right-color: #4caf50; }
     </style>
 </head>
 <body>
     <div id="root"></div>
-    <script type="text/babel">
-        function FaultReport() {
-            const [submitted, setSubmitted] = useState(false);
-            const [formData, setFormData] = useState({ soldierName: '', soldierId: '', unit: 'מחלקה 1', equipmentType: 'קשר 624', otherLocation: '', description: '' });
 
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                const finalLocation = formData.equipmentType === 'אחר' ? formData.otherLocation : formData.equipmentType;
-                const fault = { ...formData, equipmentType: finalLocation, status: 'pending', date: new Date().toISOString(), id: Date.now() };
-                
-                await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/faults.json', {
-                    method: 'POST', body: JSON.stringify(fault)
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+
+        const UNITS = ['מחלקה 1', 'מחלקה 2', 'מחלקה 3', 'חפק', 'חמל', 'מפלג'];
+        const FIREBASE_URL = "https://plugat-kaf-default-rtdb.firebaseio.com";
+
+        const storage = {
+            save: async (key, data) => {
+                await fetch(`${FIREBASE_URL}/${key}.json`, {
+                    method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
                 });
-                setSubmitted(true);
+            },
+            load: async (key) => {
+                const response = await fetch(`${FIREBASE_URL}/${key}.json`);
+                if (!response.ok) return [];
+                const data = await response.json();
+                return data ? (Array.isArray(data) ? data : Object.values(data)) : [];
+            }
+        };
+
+        function App() {
+            const [currentView, setCurrentView] = useState('dashboard');
+            const [checkouts, setCheckouts] = useState([]);
+            const [faults, setFaults] = useState([]);
+            const [spareEquipment, setSpareEquipment] = useState([]);
+            const [isSyncing, setIsSyncing] = useState(false);
+
+            const loadData = useCallback(async () => {
+                if (isSyncing) return;
+                const [c, f, s] = await Promise.all([storage.load('checkouts'), storage.load('faults'), storage.load('spareEquipment')]);
+                setCheckouts(c); setFaults(f); setSpareEquipment(s);
+            }, [isSyncing]);
+
+            useEffect(() => { loadData(); const interval = setInterval(loadData, 5000); return () => clearInterval(interval); }, [loadData]);
+
+            const updateItem = async (id, field, value) => {
+                setIsSyncing(true);
+                const updated = checkouts.map(c => c.id === id ? { ...c, [field]: value } : c);
+                setCheckouts(updated); await storage.save('checkouts', updated);
+                setIsSyncing(false);
             };
 
-            if (submitted) return <div className="card"><div className="alert">דיווח התקלה נשלח בהצלחה!</div></div>;
+            const deleteItem = async (id) => {
+                if (!confirm('למחוק רישום זה?')) return;
+                setIsSyncing(true);
+                const updated = checkouts.filter(c => c.id !== id);
+                setCheckouts(updated); await storage.save('checkouts', updated);
+                setIsSyncing(false);
+            };
 
             return (
-                <div className="card">
-                    <h2>דיווח תקלה בציוד</h2>
-                    <form onSubmit={handleSubmit}>
-                        <div className="form-group"><label>שם מלא</label><input required onChange={e => setFormData({...formData, soldierName: e.target.value})}/></div>
-                        <div className="form-group"><label>מספר אישי</label><input required type="number" onChange={e => setFormData({...formData, soldierId: e.target.value})}/></div>
-                        <div className="form-group"><label>מחלקה</label><select onChange={e => setFormData({...formData, unit: e.target.value})}>{['מחלקה 1', 'מחלקה 2', 'מחלקה 3', 'חפק', 'חמל', 'מפלג'].map(u => <option key={u}>{u}</option>)}</select></div>
-                        <div className="form-group">
-                            <label>איזה ציוד/מיקום?</label>
-                            <select value={formData.equipmentType} onChange={e => setFormData({...formData, equipmentType: e.target.value})}>
-                                <option>קשר 624</option>
-                                <option>ליונט</option>
-                                <option>מעד</option>
-                                <option>קשור לרכב החפ"ק</option>
-                                <option value="אחר">אחר (פרט היכן...)</option>
-                            </select>
+                <div>
+                    <header className="header">
+                        <div className="logo-container">
+                            <img src="https://i.ibb.co/8b8f3e/image.png" className="company-logo" alt="לוגו פלוגה" />
+                            <div className="header-title">מערכת לניהול קשר פלוגתי</div>
                         </div>
-                        {formData.equipmentType === 'אחר' && (
-                            <div className="form-group"><label>פרט היכן (לדוגמה: רכב סמפ):</label><input required placeholder="היכן נמצא הציוד התקול?" onChange={e => setFormData({...formData, otherLocation: e.target.value})}/></div>
-                        )}
-                        <div className="form-group"><label>תיאור התקלה</label><textarea required placeholder="מה לא עובד?" onChange={e => setFormData({...formData, description: e.target.value})}/></div>
-                        <button className="btn">שלח דיווח</button>
-                    </form>
+                        <nav className="nav">
+                            <button className={`nav-btn ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentView('dashboard')}>לוח בקרה</button>
+                            <button className={`nav-btn ${currentView === 'spare' ? 'active' : ''}`} onClick={() => setCurrentView('spare')}>ציוד ספייר</button>
+                            <button className={`nav-btn ${currentView === 'faults' ? 'active' : ''}`} onClick={() => setCurrentView('faults')}>תקלות ({faults.filter(f => f.status === 'pending').length})</button>
+                            <button className={`nav-btn ${currentView === 'report' ? 'active' : ''}`} onClick={() => setCurrentView('report')}>דוח יומי</button>
+                        </nav>
+                    </header>
+
+                    <main className="container">
+                        {currentView === 'dashboard' && <Dashboard checkouts={checkouts} onUpdate={updateItem} onDelete={deleteItem} />}
+                        {currentView === 'spare' && <Spare spareEquipment={spareEquipment} onSave={async (s) => {setIsSyncing(true); setSpareEquipment(s); await storage.save('spareEquipment', s); setIsSyncing(false);}} />}
+                        {currentView === 'faults' && <FaultsView faults={faults} onUpdate={async (f) => {setIsSyncing(true); setFaults(f); await storage.save('faults', f); setIsSyncing(false);}} />}
+                        {currentView === 'report' && <Report checkouts={checkouts} faults={faults} />}
+                    </main>
                 </div>
             );
         }
-        ReactDOM.render(<FaultReport />, document.getElementById('root'));
+
+        function Dashboard({ checkouts, onUpdate, onDelete }) {
+            const EditableCell = ({ value, onSave }) => {
+                const [edit, setEdit] = useState(false);
+                const [temp, setTemp] = useState(value);
+                if (!edit) return <td className="editable-cell" onClick={() => setEdit(true)}>{value || '-'}</td>;
+                return (<td><input autoFocus value={temp} onChange={e => setTemp(e.target.value)} onBlur={() => {onSave(temp); setEdit(false);}} onKeyDown={e => e.key === 'Enter' && e.target.blur()} /></td>);
+            };
+
+            return (
+                <div>
+                    {UNITS.map(unit => {
+                        const rows = checkouts.filter(c => c.unit === unit);
+                        if (rows.length === 0) return null;
+                        return (
+                            <div key={unit} className="section">
+                                <h2 className="section-title">{unit}</h2>
+                                <div className="table-container">
+                                    <table>
+                                        <thead><tr><th>תפקיד</th><th>שם</th><th>מ.א</th><th>624</th><th>ליונט</th><th>מעד</th><th>פעולות</th></tr></thead>
+                                        <tbody>
+                                            {rows.map(r => (
+                                                <tr key={r.id}>
+                                                    <EditableCell value={r.role} onSave={v => onUpdate(r.id, 'role', v)} />
+                                                    <EditableCell value={r.soldierName} onSave={v => onUpdate(r.id, 'soldierName', v)} />
+                                                    <EditableCell value={r.soldierId} onSave={v => onUpdate(r.id, 'soldierId', v)} />
+                                                    <td>{r.equipment?.radio624 ? '✓' : '-'}</td>
+                                                    <td>{r.equipment?.lionet?.serialNumber || (r.equipment?.lionet ? '✓' : '-')}</td>
+                                                    <td>{r.equipment?.vest ? '✓' : '-'}</td>
+                                                    <td><button className="btn btn-danger btn-small" onClick={() => onDelete(r.id)}>מחק</button></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        }
+
+        function Spare({ spareEquipment, onSave }) {
+            const [newItem, setNewItem] = useState({ type: '', quantity: '' });
+            return (
+                <div className="section">
+                    <h2 className="section-title">ציוד ספייר</h2>
+                    <div style={{display:'flex', gap:'10px', marginBottom:'20px'}}>
+                        <input placeholder="סוג ציוד" value={newItem.type} onChange={e=>setNewItem({...newItem, type:e.target.value})} />
+                        <input placeholder="כמות" type="number" value={newItem.quantity} onChange={e=>setNewItem({...newItem, quantity:e.target.value})} />
+                        <button className="btn" onClick={() => {onSave([...spareEquipment, {...newItem, id:Date.now()}]); setNewItem({type:'', quantity:''});}}>הוסף</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>סוג</th><th>כמות</th><th>פעולות</th></tr></thead>
+                        <tbody>
+                            {spareEquipment.map(s => <tr key={s.id}><td>{s.type}</td><td>{s.quantity}</td><td><button className="btn btn-danger btn-small" onClick={() => onSave(spareEquipment.filter(x => x.id !== s.id))}>מחק</button></td></tr>)}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
+        function FaultsView({ faults, onUpdate }) {
+            const pending = faults.filter(f => f.status === 'pending');
+            const resolved = faults.filter(f => f.status === 'resolved');
+            const fmt = (d) => d ? new Date(d).toLocaleString('he-IL') : '-';
+            return (
+                <div>
+                    <div className="section">
+                        <h2 className="section-title">תקלות בטיפול</h2>
+                        {pending.map(f => (
+                            <div key={f.id} className="fault-item">
+                                <strong>{f.soldierName} ({f.unit})</strong><br/>
+                                {f.equipmentType}: {f.description}<br/>
+                                <small>דווח: {fmt(f.date)}</small><br/>
+                                <button className="btn btn-small" style={{marginTop:'10px'}} onClick={() => onUpdate(faults.map(x => x.id === f.id ? {...x, status:'resolved', resolvedDate: new Date().toISOString()} : x))}>✓ טופל</button>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="section">
+                        <h2 className="section-title">היסטוריית תקלות</h2>
+                        {resolved.slice(-10).reverse().map(f => (
+                            <div key={f.id} className="fault-item fault-resolved">
+                                <strong>{f.soldierName} - {f.equipmentType}</strong><br/>
+                                תיאור: {f.description}<br/>
+                                <small>פתיחה: {fmt(f.date)} | סגירה: {fmt(f.resolvedDate)}</small>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function Report({ checkouts, faults }) {
+            const [isEditing, setIsEditing] = useState(false);
+            const [content, setContent] = useState('');
+            useEffect(() => {
+                const load = async () => {
+                    const response = await fetch(`${FIREBASE_URL}/dailyReport.json`);
+                    if (response.ok) { const data = await response.json(); if (data) setContent(data.content); }
+                }; load();
+            }, []);
+
+            const generate = () => {
+                let r = 'דוח צ\n*פלוגה כ׳*\n\n';
+                const prefix = (role) => {
+                    const t = (role || '').toLowerCase();
+                    if (t === 'מפ') return 'מ״פ '; if (t === 'סמפ') return 'סמ״פ '; if (t === 'ממ') return 'מ״מ ';
+                    return '';
+                };
+                UNITS.forEach(unit => {
+                    const soldiers = checkouts.filter(c => c.unit === unit);
+                    if (soldiers.length === 0) return;
+                    r += `${unit}:\n`;
+                    soldiers.forEach(s => r += `  ${prefix(s.role)}${s.soldierId ? s.soldierId.slice(-4) : '????'}\n`);
+                    r += '\n';
+                });
+                return r;
+            };
+
+            const handleSave = async () => {
+                await fetch(`${FIREBASE_URL}/dailyReport.json`, { method: 'PUT', body: JSON.stringify({ content }) });
+                setIsEditing(false); alert('נשמר!');
+            };
+
+            return (
+                <div className="section">
+                    <h2 className="section-title">דוח יומי</h2>
+                    {!isEditing ? (
+                        <>
+                            <div className="report-preview">{content || generate()}</div>
+                            <button className="btn" onClick={() => {setContent(content || generate()); setIsEditing(true);}}>✏️ ערוך דוח</button>
+                        </>
+                    ) : (
+                        <>
+                            <textarea value={content} onChange={e => setContent(e.target.value)} style={{width:'100%', height:'400px', marginBottom:'10px', direction:'rtl'}} />
+                            <button className="btn" onClick={handleSave}>שמור</button>
+                            <button className="btn" style={{background:'#999', marginRight:'10px'}} onClick={() => setIsEditing(false)}>ביטול</button>
+                        </>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>
 </html>
