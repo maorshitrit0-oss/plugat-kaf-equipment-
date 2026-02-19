@@ -440,9 +440,7 @@
         };
 
         const initData = () => {
-            if (!storage.load('checkouts')) await storage.save('checkouts', []);
-            if (!storage.load('faults')) await storage.save('faults', []);
-            if (!storage.load('spareEquipment')) await storage.save('spareEquipment', []);
+            // No longer needed - loadData handles initialization
         };
 
         function App() {
