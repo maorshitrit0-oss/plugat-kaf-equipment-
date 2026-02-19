@@ -395,7 +395,108 @@
                 padding: 0.5rem 0.3rem;
             }
         }
-    </style>
+    
+        /* Responsive Design for Mobile */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                padding: 1rem;
+                gap: 1rem;
+            }
+
+            .logo-container {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .company-logo {
+                width: 50px;
+                height: 50px;
+            }
+
+            .header-title {
+                font-size: 1.2rem;
+            }
+
+            .nav {
+                flex-wrap: wrap;
+                justify-content: center;
+                width: 100%;
+            }
+
+            .nav-btn {
+                font-size: 0.85rem;
+                padding: 0.5rem 0.8rem;
+            }
+
+            .container {
+                padding: 0 1rem;
+                margin: 1rem auto;
+            }
+
+            .section {
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            table {
+                font-size: 0.85rem;
+            }
+
+            th, td {
+                padding: 0.5rem;
+            }
+
+            .btn {
+                font-size: 0.9rem;
+                padding: 0.5rem 1rem;
+            }
+
+            .form-group input,
+            .form-group select,
+            .form-group textarea {
+                font-size: 0.95rem;
+            }
+
+            .report-preview {
+                font-size: 0.85rem;
+                padding: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-title {
+                font-size: 1rem;
+            }
+
+            .nav-btn {
+                font-size: 0.8rem;
+                padding: 0.4rem 0.6rem;
+            }
+
+            .section-title {
+                font-size: 1.2rem;
+            }
+
+            table {
+                font-size: 0.75rem;
+            }
+
+            .btn {
+                font-size: 0.85rem;
+                padding: 0.4rem 0.8rem;
+            }
+        }
+
+</style>
 </head>
 <body>
     <div id="root"></div>
@@ -663,7 +764,7 @@
                                     <table>
                                         <thead>
                                             <tr>
-                                                <th>דרגה</th>
+                                                <th>תפקיד</th>
                                                 <th>שם</th>
                                                 <th>מ.א</th>
                                                 <th>624</th>
@@ -676,8 +777,8 @@
                                             {unitSoldiers.map(soldier => (
                                                 <tr key={soldier.id}>
                                                     <EditableCell
-                                                        value={soldier.rank || ''}
-                                                        onChange={(val) => updateCheckout(soldier.id, 'rank', val)}
+                                                        value={soldier.role || ''}
+                                                        onChange={(val) => updateCheckout(soldier.id, 'role', val)}
                                                     />
                                                     <EditableCell
                                                         value={soldier.soldierName}
@@ -868,60 +969,86 @@
         }
 
         function LinksView() {
-            const [alert, setAlert] = useState(null);
-            const baseUrl = window.location.href.replace(/\/[^/]*$/, '/');
-            
-            const signupUrl = baseUrl + 'soldier-signup.html';
-            const faultUrl = baseUrl + 'fault-report.html';
-
-            const copyLink = (url, type) => {
-                navigator.clipboard.writeText(url);
-                setAlert({ type: 'success', message: `קישור ${type} הועתק!` });
-                setTimeout(() => setAlert(null), 2000);
-            };
+            const links = [
+                {
+                    title: 'טופס חתימה על ציוד',
+                    url: 'https://maorshitrit0-oss.github.io/plugat-kaf-equipment-/soldier-signup-UPDATED.html',
+                    description: 'קישור לשליחה לחיילים לחתימה על ציוד'
+                },
+                {
+                    title: 'טופס דיווח תקלות',
+                    url: 'https://maorshitrit0-oss.github.io/plugat-kaf-equipment-/fault-report-UPDATED.html',
+                    description: 'קישור לשליחה לחיילים לדיווח תקלות'
+                },
+                {
+                    title: 'מערכת ניהול',
+                    url: 'https://maorshitrit0-oss.github.io/plugat-kaf-equipment-/equipment-manager-main-UPDATED.html',
+                    description: 'קישור למערכת הניהול (רק למפקד)'
+                }
+            ];
 
             return (
                 <div>
-                    {alert && (
-                        <div className={`alert alert-${alert.type}`}>
-                            {alert.message}
-                        </div>
-                    )}
-
                     <div className="section">
-                        <h2 className="section-title">קישורים לחיילים</h2>
-                        
-                        <div className="link-box">
-                            <div className="link-header">📝 טופס חתימה על ציוד</div>
-                            <p style={{color: '#666', marginBottom: '0.5rem', fontSize: '0.9rem'}}>
-                                החיילים ימלאו את הטופס וירשמו על הציוד שהם מקבלים
-                            </p>
-                            <div className="link-url">
-                                <input type="text" value={signupUrl} readOnly />
-                                <button 
-                                    className="btn"
-                                    onClick={() => copyLink(signupUrl, 'חתימה')}
-                                >
-                                    העתק
-                                </button>
+                        <h2 className="section-title">קישורים לטפסים</h2>
+                        <p style={{marginBottom: '1.5rem', color: '#666'}}>
+                            העתק את הקישורים ושלח לחיילים דרך WhatsApp/Telegram
+                        </p>
+                        {links.map((link, index) => (
+                            <div key={index} style={{
+                                background: '#f8f8f8',
+                                padding: '1.5rem',
+                                borderRadius: '8px',
+                                marginBottom: '1rem',
+                                border: '2px solid #e0e0e0'
+                            }}>
+                                <h3 style={{
+                                    fontSize: '1.1rem',
+                                    fontWeight: '600',
+                                    marginBottom: '0.5rem',
+                                    color: '#2c5f2d'
+                                }}>
+                                    {link.title}
+                                </h3>
+                                <p style={{
+                                    fontSize: '0.9rem',
+                                    color: '#666',
+                                    marginBottom: '1rem'
+                                }}>
+                                    {link.description}
+                                </p>
+                                <div style={{
+                                    display: 'flex',
+                                    gap: '0.5rem',
+                                    alignItems: 'center'
+                                }}>
+                                    <input
+                                        type="text"
+                                        value={link.url}
+                                        readOnly
+                                        style={{
+                                            flex: 1,
+                                            padding: '0.75rem',
+                                            border: '1px solid #ddd',
+                                            borderRadius: '4px',
+                                            fontFamily: 'monospace',
+                                            fontSize: '0.85rem'
+                                        }}
+                                        onClick={(e) => e.target.select()}
+                                    />
+                                    <button
+                                        className="btn"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(link.url);
+                                            alert('✓ הקישור הועתק!');
+                                        }}
+                                        style={{minWidth: '100px'}}
+                                    >
+                                        📋 העתק
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-
-                        <div className="link-box">
-                            <div className="link-header">⚠️ טופס דיווח תקלות</div>
-                            <p style={{color: '#666', marginBottom: '0.5rem', fontSize: '0.9rem'}}>
-                                החיילים ידווחו כאן על תקלות בציוד
-                            </p>
-                            <div className="link-url">
-                                <input type="text" value={faultUrl} readOnly />
-                                <button 
-                                    className="btn"
-                                    onClick={() => copyLink(faultUrl, 'תקלות')}
-                                >
-                                    העתק
-                                </button>
-                            </div>
-                        </div>
+                        ))}
                     </div>
                 </div>
             );
@@ -1173,6 +1300,16 @@
             const pendingFaults = faults.filter(f => f.status === 'pending');
             const resolvedFaults = faults.filter(f => f.status === 'resolved');
 
+            const formatDate = (dateString) => {
+                return new Date(dateString).toLocaleString('he-IL', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            };
+
             return (
                 <div>
                     <div className="section">
@@ -1186,28 +1323,32 @@
                             pendingFaults.map(fault => (
                                 <div key={fault.id} className="fault-item">
                                     <div style={{marginBottom: '0.5rem'}}>
-                                        <strong>{fault.soldierName}</strong> - {fault.unit}
+                                        <strong style={{fontSize: '1.1rem'}}>{fault.soldierName}</strong> - {fault.unit}
                                     </div>
                                     <div style={{marginBottom: '0.5rem'}}>
                                         מ.א: {fault.soldierId}
                                     </div>
                                     <div style={{marginBottom: '0.5rem'}}>
                                         <strong>ציוד:</strong> {fault.equipmentType}
+                                        {fault.otherLocation && <span> ({fault.otherLocation})</span>}
                                     </div>
                                     <div style={{
                                         background: 'white',
-                                        padding: '0.5rem',
+                                        padding: '0.75rem',
                                         borderRadius: '4px',
-                                        marginBottom: '0.5rem'
+                                        marginBottom: '0.5rem',
+                                        border: '1px solid #e0e0e0'
                                     }}>
+                                        <strong>תיאור התקלה:</strong><br/>
                                         {fault.description}
                                     </div>
-                                    <div style={{fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem'}}>
-                                        דווח ב: {new Date(fault.date).toLocaleString('he-IL')}
+                                    <div style={{fontSize: '0.85rem', color: '#666', marginBottom: '0.75rem'}}>
+                                        📅 דווח ב: {formatDate(fault.date)}
                                     </div>
                                     <button 
                                         className="btn"
                                         onClick={() => updateFaultStatus(fault.id, 'resolved')}
+                                        style={{background: '#4caf50'}}
                                     >
                                         ✓ סמן כטופל
                                     </button>
@@ -1216,23 +1357,71 @@
                         )}
                     </div>
 
-                    {resolvedFaults.length > 0 && (
-                        <div className="section">
-                            <h2 className="section-title">תקלות שטופלו</h2>
-                            {resolvedFaults.slice(-10).reverse().map(fault => (
-                                <div key={fault.id} className="fault-item fault-resolved">
-                                    <strong>{fault.soldierName}</strong> - {fault.equipmentType}
-                                    <div style={{fontSize: '0.9rem', color: '#666'}}>
-                                        {fault.description}
+                    <div className="section">
+                        <h2 className="section-title">היסטוריית תקלות ({resolvedFaults.length})</h2>
+                        
+                        {resolvedFaults.length === 0 ? (
+                            <p style={{textAlign: 'center', color: '#999', padding: '2rem'}}>
+                                אין תקלות שטופלו
+                            </p>
+                        ) : (
+                            <div>
+                                {resolvedFaults.slice().reverse().map(fault => (
+                                    <div key={fault.id} className="fault-item fault-resolved" style={{
+                                        background: '#f0f7f0',
+                                        border: '2px solid #c8e6c9'
+                                    }}>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'start'}}>
+                                            <div style={{flex: 1}}>
+                                                <div style={{marginBottom: '0.5rem'}}>
+                                                    <strong>{fault.soldierName}</strong> - {fault.unit}
+                                                </div>
+                                                <div style={{marginBottom: '0.5rem'}}>
+                                                    מ.א: {fault.soldierId}
+                                                </div>
+                                                <div style={{marginBottom: '0.5rem'}}>
+                                                    <strong>ציוד:</strong> {fault.equipmentType}
+                                                    {fault.otherLocation && <span> ({fault.otherLocation})</span>}
+                                                </div>
+                                                <div style={{
+                                                    background: 'white',
+                                                    padding: '0.5rem',
+                                                    borderRadius: '4px',
+                                                    marginBottom: '0.5rem',
+                                                    fontSize: '0.95rem'
+                                                }}>
+                                                    {fault.description}
+                                                </div>
+                                                <div style={{fontSize: '0.85rem', color: '#666'}}>
+                                                    📅 דווח: {formatDate(fault.date)}
+                                                </div>
+                                                {fault.resolvedDate && (
+                                                    <div style={{fontSize: '0.85rem', color: '#4caf50', fontWeight: '600'}}>
+                                                        ✓ טופל: {formatDate(fault.resolvedDate)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div style={{
+                                                background: '#4caf50',
+                                                color: 'white',
+                                                padding: '0.5rem 1rem',
+                                                borderRadius: '20px',
+                                                fontSize: '0.85rem',
+                                                fontWeight: '600'
+                                            }}>
+                                                ✓ טופל
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             );
         }
 
+        
         ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>

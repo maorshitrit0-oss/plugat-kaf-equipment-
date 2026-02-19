@@ -192,7 +192,108 @@
                 padding: 1.5rem;
             }
         }
-    </style>
+    
+        /* Responsive Design for Mobile */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                padding: 1rem;
+                gap: 1rem;
+            }
+
+            .logo-container {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .company-logo {
+                width: 50px;
+                height: 50px;
+            }
+
+            .header-title {
+                font-size: 1.2rem;
+            }
+
+            .nav {
+                flex-wrap: wrap;
+                justify-content: center;
+                width: 100%;
+            }
+
+            .nav-btn {
+                font-size: 0.85rem;
+                padding: 0.5rem 0.8rem;
+            }
+
+            .container {
+                padding: 0 1rem;
+                margin: 1rem auto;
+            }
+
+            .section {
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            table {
+                font-size: 0.85rem;
+            }
+
+            th, td {
+                padding: 0.5rem;
+            }
+
+            .btn {
+                font-size: 0.9rem;
+                padding: 0.5rem 1rem;
+            }
+
+            .form-group input,
+            .form-group select,
+            .form-group textarea {
+                font-size: 0.95rem;
+            }
+
+            .report-preview {
+                font-size: 0.85rem;
+                padding: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-title {
+                font-size: 1rem;
+            }
+
+            .nav-btn {
+                font-size: 0.8rem;
+                padding: 0.4rem 0.6rem;
+            }
+
+            .section-title {
+                font-size: 1.2rem;
+            }
+
+            table {
+                font-size: 0.75rem;
+            }
+
+            .btn {
+                font-size: 0.85rem;
+                padding: 0.4rem 0.8rem;
+            }
+        }
+
+</style>
 </head>
 <body>
     <div class="form-container" id="formContainer">
@@ -256,8 +357,6 @@
                     <option value="מטען ליונט">מטען ליונט</option>
                     <option value="קשור לרכב סיור">קשור לרכב סיור</option>
                     <option value="קשור לרכב כוננות">קשור לרכב כוננות</option>
-                    <option value="קשור לרכב החפק">קשור לרכב החפק</option>
-                    <option value="קשור לרכב החפק">קשור לרכב החפק</option>
                     <option value="אחר">אחר</option>
                 </select>
             </div>
@@ -313,8 +412,8 @@
                     equipmentType,
                     description,
                     status: 'pending',
-                    date: new Date().toISOString()
-                };
+                    date: new Date().toISOString(),
+                    otherLocation: equipmentType === "אחר" ? document.getElementById("otherLocation").value : ""};
 
                 // Save to Firebase
                 const response = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/faults.json', {
