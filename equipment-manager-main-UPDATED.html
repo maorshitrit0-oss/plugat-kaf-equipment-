@@ -13,7 +13,7 @@
         body { font-family: 'Assistant', sans-serif; background: #f5f5f5; color: #333; }
         .header { background: white; padding: 1rem 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-bottom: 3px solid #2c5f2d; display: flex; align-items: center; gap: 2rem; }
         .logo-container { display: flex; align-items: center; gap: 1.5rem; }
-        .company-logo { width: 80px; height: auto; object-fit: contain; }
+        .company-logo { width: 100px; height: auto; object-fit: contain; }
         .header-title { font-family: 'Heebo', sans-serif; font-size: 1.6rem; font-weight: 800; color: #2c5f2d; }
         .nav { display: flex; gap: 0.5rem; margin-right: auto; flex-wrap: wrap; }
         .nav-btn { background: white; border: 2px solid #ddd; color: #333; padding: 0.6rem 1.2rem; cursor: pointer; font-family: 'Assistant', sans-serif; font-size: 0.95rem; font-weight: 600; border-radius: 6px; transition: all 0.2s; }
@@ -22,17 +22,17 @@
         .section { background: white; border-radius: 8px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #e0e0e0; }
         .section-title { font-family: 'Heebo', sans-serif; font-size: 1.4rem; font-weight: 700; color: #2c5f2d; margin-bottom: 1.5rem; border-bottom: 2px solid #2c5f2d; padding-bottom: 0.5rem; }
         .table-container { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; }
+        table { width: 100%; border-collapse: collapse; background: white; }
         thead { background: #2c5f2d; color: white; }
         th, td { padding: 1rem; border: 1px solid #ddd; text-align: center; }
         tbody tr:nth-child(even) { background: #f9f9f9; }
-        .editable-cell { cursor: pointer; min-width: 100px; }
+        .editable-cell { cursor: pointer; transition: background 0.2s; min-width: 100px; }
         .editable-cell:hover { background: #fffde7; border: 1px dashed #2c5f2d; }
-        .editable-cell input { width: 100%; padding: 0.4rem; border: 2px solid #2c5f2d; border-radius: 4px; text-align: center; }
+        .editable-cell input { width: 100%; padding: 0.4rem; border: 2px solid #2c5f2d; border-radius: 4px; text-align: center; font-family: inherit; }
         .btn { background: #2c5f2d; color: white; border: none; padding: 0.7rem 1.5rem; border-radius: 6px; font-weight: 600; cursor: pointer; }
         .btn-danger { background: #d32f2f; }
-        .report-preview { background: #f9f9f9; padding: 1.5rem; border-radius: 6px; border: 1px solid #ccc; white-space: pre-wrap; direction: rtl; text-align: right; }
-        .fault-item { background: #fff3e0; border-right: 5px solid #ff9800; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; text-align: right; }
+        .report-preview { background: #f9f9f9; padding: 1.5rem; border-radius: 6px; border: 1px solid #ccc; white-space: pre-wrap; direction: rtl; text-align: right; line-height: 1.5; font-family: 'Courier New', monospace; }
+        .fault-item { background: #fff3e0; border-right: 5px solid #ff9800; padding: 1.2rem; border-radius: 6px; margin-bottom: 1rem; text-align: right; }
         .fault-resolved { background: #e8f5e9; border-right-color: #4caf50; }
     </style>
 </head>
@@ -42,14 +42,14 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback } = React;
 
+        const COMPANY_LOGO = "https://i.ibb.co/8b8f3e/image.png"; 
+
         const UNITS = ['מחלקה 1', 'מחלקה 2', 'מחלקה 3', 'חפק', 'חמל', 'מפלג'];
 
         const storage = {
             save: async (key, data) => {
                 const response = await fetch(`https://plugat-kaf-default-rtdb.firebaseio.com/${key}.json`, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(data)
+                    method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
                 });
                 return response.ok;
             },
@@ -70,42 +70,24 @@
 
             const loadData = useCallback(async () => {
                 if (isSyncing) return;
-                const c = await storage.load('checkouts');
-                const f = await storage.load('faults');
-                const s = await storage.load('spareEquipment');
-                setCheckouts(c);
-                setFaults(f);
-                setSpareEquipment(s);
+                const [c, f, s] = await Promise.all([storage.load('checkouts'), storage.load('faults'), storage.load('spareEquipment')]);
+                setCheckouts(c || []); setFaults(f || []); setSpareEquipment(s || []);
             }, [isSyncing]);
 
-            useEffect(() => {
-                loadData();
-                const interval = setInterval(loadData, 5000);
-                return () => clearInterval(interval);
-            }, [loadData]);
+            useEffect(() => { loadData(); const interval = setInterval(loadData, 5000); return () => clearInterval(interval); }, [loadData]);
 
-            const handleUpdate = async (id, field, value) => {
+            const updateCheckout = async (id, field, value) => {
                 setIsSyncing(true);
                 const updated = checkouts.map(c => c.id === id ? { ...c, [field]: value } : c);
-                setCheckouts(updated);
-                await storage.save('checkouts', updated);
+                setCheckouts(updated); await storage.save('checkouts', updated);
                 setIsSyncing(false);
             };
 
-            const handleDelete = async (id) => {
-                if (!confirm('למחוק רישום זה?')) return;
+            const deleteCheckout = async (id) => {
+                if (!confirm('למחוק רישום?')) return;
                 setIsSyncing(true);
                 const updated = checkouts.filter(c => c.id !== id);
-                setCheckouts(updated);
-                await storage.save('checkouts', updated);
-                setIsSyncing(false);
-            };
-
-            const handleFaultStatus = async (faultId, status) => {
-                setIsSyncing(true);
-                const updated = faults.map(f => f.id === faultId ? { ...f, status, resolvedDate: status === 'resolved' ? new Date().toISOString() : null } : f);
-                setFaults(updated);
-                await storage.save('faults', updated);
+                setCheckouts(updated); await storage.save('checkouts', updated);
                 setIsSyncing(false);
             };
 
@@ -113,19 +95,22 @@
                 <div>
                     <header className="header">
                         <div className="logo-container">
-                            <img src="https://i.ibb.co/L9YmNfW/image.png" className="company-logo" alt="לוגו פלוגה" />
+                            <img src={COMPANY_LOGO} className="company-logo" alt="פלוגה כ" />
                             <div className="header-title">מערכת לניהול קשר פלוגתי</div>
                         </div>
                         <nav className="nav">
                             <button className={`nav-btn ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentView('dashboard')}>לוח בקרה</button>
+                            <button className={`nav-btn ${currentView === 'spare' ? 'active' : ''}`} onClick={() => setCurrentView('spare')}>ציוד ספייר</button>
                             <button className={`nav-btn ${currentView === 'faults' ? 'active' : ''}`} onClick={() => setCurrentView('faults')}>תקלות ({faults.filter(f => f.status === 'pending').length})</button>
                             <button className={`nav-btn ${currentView === 'report' ? 'active' : ''}`} onClick={() => setCurrentView('report')}>דוח יומי</button>
                             <button className={`nav-btn ${currentView === 'links' ? 'active' : ''}`} onClick={() => setCurrentView('links')}>קישורים</button>
                         </nav>
                     </header>
+
                     <main className="container">
-                        {currentView === 'dashboard' && <Dashboard checkouts={checkouts} onUpdate={handleUpdate} onDelete={handleDelete} />}
-                        {currentView === 'faults' && <FaultsView faults={faults} onStatusChange={handleFaultStatus} />}
+                        {currentView === 'dashboard' && <Dashboard checkouts={checkouts} onUpdate={updateCheckout} onDelete={deleteCheckout} />}
+                        {currentView === 'spare' && <Spare spareEquipment={spareEquipment} onSave={async (s) => {setIsSyncing(true); setSpareEquipment(s); await storage.save('spareEquipment', s); setIsSyncing(false);}} />}
+                        {currentView === 'faults' && <Faults faults={faults} onUpdate={async (f) => {setIsSyncing(true); setFaults(f); await storage.save('faults', f); setIsSyncing(false);}} />}
                         {currentView === 'report' && <Report checkouts={checkouts} faults={faults} />}
                         {currentView === 'links' && <Links />}
                     </main>
@@ -136,16 +121,9 @@
         function Dashboard({ checkouts, onUpdate, onDelete }) {
             const EditableCell = ({ value, onSave }) => {
                 const [edit, setEdit] = useState(false);
-                const [temp, setTemp] = useState(value);
+                const [val, setVal] = useState(value);
                 if (!edit) return <td className="editable-cell" onClick={() => setEdit(true)}>{value || '-'}</td>;
-                return (
-                    <td>
-                        <input autoFocus value={temp} 
-                            onChange={e => setTemp(e.target.value)}
-                            onBlur={() => { onSave(temp); setEdit(false); }}
-                            onKeyDown={e => e.key === 'Enter' && e.target.blur()} />
-                    </td>
-                );
+                return (<td><input autoFocus value={val} onChange={e => setVal(e.target.value)} onBlur={() => {onSave(val); setEdit(false);}} onKeyDown={e => e.key === 'Enter' && e.target.blur()} /></td>);
             };
 
             return (
@@ -181,69 +159,7 @@
             );
         }
 
-        function Report({ checkouts, faults }) {
-            const [isEditing, setIsEditing] = useState(false);
-            const [customReport, setCustomReport] = useState('');
-
-            useEffect(() => {
-                const fetchReport = async () => {
-                    const res = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/dailyReport.json');
-                    if (res.ok) { const data = await res.json(); if (data) setCustomReport(data.content); }
-                };
-                fetchReport();
-            }, []);
-
-            const generateDefault = () => {
-                let report = 'דוח צ\n*פלוגה כ׳*\n\n';
-                const getPrefix = (r) => {
-                    const role = (r || '').toLowerCase();
-                    if (role === 'מפ') return 'מ״פ ';
-                    if (role === 'סמפ') return 'סמ״פ ';
-                    if (role === 'ממ') return 'מ״מ ';
-                    return '';
-                };
-                UNITS.forEach(unit => {
-                    const rows = checkouts.filter(c => c.unit === unit);
-                    if (rows.length === 0) return;
-                    report += `${unit}:\n`;
-                    rows.forEach(r => {
-                        const last4 = r.soldierId ? r.soldierId.slice(-4) : '????';
-                        report += `  ${getPrefix(r.role)}${last4}\n`;
-                    });
-                    report += '\n';
-                });
-                return report;
-            };
-
-            const handleSave = async () => {
-                await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/dailyReport.json', {
-                    method: 'PUT', body: JSON.stringify({ content: customReport })
-                });
-                setIsEditing(false);
-                alert('הדוח נשמר!');
-            };
-
-            return (
-                <div className="section">
-                    <h2 className="section-title">דוח יומי</h2>
-                    {!isEditing ? (
-                        <>
-                            <div className="report-preview">{customReport || generateDefault()}</div>
-                            <button className="btn" style={{marginTop:'10px'}} onClick={() => {setCustomReport(customReport || generateDefault()); setIsEditing(true);}}>✏️ ערוך דוח</button>
-                            <button className="btn" style={{marginRight:'10px'}} onClick={() => {navigator.clipboard.writeText(customReport || generateDefault()); alert('הועתק');}}>📋 העתק</button>
-                        </>
-                    ) : (
-                        <>
-                            <textarea value={customReport} onChange={e => setCustomReport(e.target.value)} style={{width:'100%', minHeight:'400px', padding:'10px'}} />
-                            <button className="btn" onClick={handleSave}>שמור</button>
-                            <button className="btn" style={{background:'#999', marginRight:'10px'}} onClick={() => setIsEditing(false)}>ביטול</button>
-                        </>
-                    )}
-                </div>
-            );
-        }
-
-        function FaultsView({ faults, onStatusChange }) {
+        function Faults({ faults, onUpdate }) {
             const pending = faults.filter(f => f.status === 'pending');
             const resolved = faults.filter(f => f.status === 'resolved');
             const fmt = (d) => d ? new Date(d).toLocaleString('he-IL') : '-';
@@ -255,19 +171,19 @@
                         {pending.map(f => (
                             <div key={f.id} className="fault-item">
                                 <strong>{f.soldierName} ({f.unit})</strong><br/>
-                                <b>תקלה:</b> {f.equipmentType} - {f.description}<br/>
-                                <small>נפתח ב: {fmt(f.date)}</small><br/>
-                                <button className="btn btn-small" style={{marginTop:'10px'}} onClick={() => onStatusChange(f.id, 'resolved')}>✓ סמן כטופל</button>
+                                תקלה: {f.equipmentType} - {f.description}<br/>
+                                <small>דווח ב: {fmt(f.date)}</small><br/>
+                                <button className="btn btn-small" style={{marginTop:'10px'}} onClick={() => onUpdate(faults.map(x => x.id === f.id ? {...x, status:'resolved', resolvedDate: new Date().toISOString()} : x))}>✓ טופל</button>
                             </div>
                         ))}
                     </div>
                     <div className="section">
                         <h2 className="section-title">היסטוריית תקלות</h2>
-                        {resolved.slice(-10).reverse().map(f => (
+                        {resolved.slice().reverse().map(f => (
                             <div key={f.id} className="fault-item fault-resolved">
-                                <strong>{f.soldierName}</strong><br/>
-                                {f.equipmentType}: {f.description}<br/>
-                                <small>נפתח: {fmt(f.date)} | טופל: {fmt(f.resolvedDate)}</small>
+                                <strong>{f.soldierName} - {f.equipmentType}</strong><br/>
+                                תיאור: {f.description}<br/>
+                                <small>פתיחה: {fmt(f.date)} | סגירה: {fmt(f.resolvedDate)}</small>
                             </div>
                         ))}
                     </div>
@@ -275,12 +191,82 @@
             );
         }
 
+        function Report({ checkouts, faults }) {
+            const [isEditing, setIsEditing] = useState(false);
+            const [content, setContent] = useState('');
+
+            useEffect(() => {
+                const load = async () => {
+                    const res = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/dailyReport.json');
+                    if (res.ok) { const data = await res.json(); if (data) setContent(data.content); }
+                }; load();
+            }, []);
+
+            const generate = () => {
+                let r = 'דוח צ\n*פלוגה כ׳*\n\n';
+                const prefix = (role) => {
+                    const t = (role || '').toLowerCase();
+                    if (t === 'מפ') return 'מ״פ '; if (t === 'סמפ') return 'סמ״פ '; if (t === 'ממ') return 'מ״מ ';
+                    return '';
+                };
+                UNITS.forEach(unit => {
+                    const soldiers = checkouts.filter(c => c.unit === unit);
+                    if (soldiers.length === 0) return;
+                    r += `${unit}:\n`;
+                    soldiers.forEach(s => r += `  ${prefix(s.role)}${s.soldierId ? s.soldierId.slice(-4) : '????'}\n`);
+                    r += '\n';
+                });
+                return r;
+            };
+
+            const saveReport = async () => {
+                await storage.save('dailyReport', { content }); setIsEditing(false); alert('הדוח נשמר!');
+            };
+
+            return (
+                <div className="section">
+                    <h2 className="section-title">דוח יומי</h2>
+                    {!isEditing ? (
+                        <>
+                            <div className="report-preview">{content || generate()}</div>
+                            <button className="btn" onClick={() => {setContent(content || generate()); setIsEditing(true);}}>✏️ ערוך</button>
+                        </>
+                    ) : (
+                        <>
+                            <textarea value={content} onChange={e => setContent(e.target.value)} style={{width:'100%', height:'400px', marginBottom:'10px', direction:'rtl'}} />
+                            <button className="btn" onClick={saveReport}>שמור</button>
+                        </>
+                    )}
+                </div>
+            );
+        }
+
+        function Spare({ spareEquipment, onSave }) {
+            const [newItem, setNewItem] = useState({ type: '', quantity: '' });
+            return (
+                <div className="section">
+                    <h2 className="section-title">ציוד ספייר</h2>
+                    <div style={{display:'flex', gap:'10px', marginBottom:'20px'}}>
+                        <input placeholder="סוג" value={newItem.type} onChange={e => setNewItem({...newItem, type:e.target.value})} />
+                        <input placeholder="כמות" type="number" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity:e.target.value})} />
+                        <button className="btn" onClick={() => {onSave([...spareEquipment, {...newItem, id:Date.now()}]); setNewItem({type:'', quantity:''});}}>הוסף</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>סוג</th><th>כמות</th><th>פעולות</th></tr></thead>
+                        <tbody>
+                            {spareEquipment.map(s => <tr key={s.id}><td>{s.type}</td><td>{s.quantity}</td><td><button className="btn btn-danger btn-small" onClick={() => onSave(spareEquipment.filter(x => x.id !== s.id))}>מחק</button></td></tr>)}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
         function Links() {
             return (
                 <div className="section">
-                    <h2 className="section-title">קישורים להפצה</h2>
-                    <div className="link-box"><strong>טופס חתימה:</strong> maorshitrit0-oss.github.io/plugat-kaf-equipment-/soldier-signup-UPDATED.html</div>
-                    <div className="link-box"><strong>טופס תקלות:</strong> maorshitrit0-oss.github.io/plugat-kaf-equipment-/fault-report-UPDATED.html</div>
+                    <h2 className="section-title">קישורים</h2>
+                    <div className="link-box">טופס חתימה: maorshitrit0-oss.github.io/plugat-kaf-equipment-/soldier-signup-UPDATED.html</div>
+                    <div className="link-box">טופס תקלות: maorshitrit0-oss.github.io/plugat-kaf-equipment-/fault-report-UPDATED.html</div>
                 </div>
             );
         }
