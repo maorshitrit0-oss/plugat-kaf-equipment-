@@ -1,1 +1,1 @@
-# plugat-kaf-equipment-
+פלוגה כ ציוד קשר 
