@@ -594,66 +594,64 @@
             );
         }
 
-        function DashboardView({ checkouts, faults, deleteCheckout, updateCheckout }) {
-            const [editingCell, setEditingCell] = useState(null);
+        function EditableCell({ value, onChange, type = 'text' }) {
+            const [isEditing, setIsEditing] = useState(false);
+            const [tempValue, setTempValue] = useState(value);
 
-            const totalSoldiers = checkouts.length;
-            const pendingFaults = faults.filter(f => f.status === 'pending').length;
+            useEffect(() => {
+                setTempValue(value);
+            }, [value]);
 
-            const EditableCell = ({ value, onChange, type = 'text' }) => {
-                const [isEditing, setIsEditing] = useState(false);
-                const [tempValue, setTempValue] = useState(value);
-
-                useEffect(() => {
-                    setTempValue(value);
-                }, [value]);
-
-                if (!isEditing) {
-                    return (
-                        <td 
-                            className="editable-cell"
-                            onClick={() => {
-                                setTempValue(value);
-                                setIsEditing(true);
-                            }}
-                            style={{cursor: 'pointer'}}
-                        >
-                            {value || '-'}
-                        </td>
-                    );
-                }
-
+            if (!isEditing) {
                 return (
-                    <td>
-                        <input
-                            type={type}
-                            value={tempValue}
-                            onChange={(e) => setTempValue(e.target.value)}
-                            onBlur={() => {
+                    <td 
+                        className="editable-cell"
+                        onClick={() => {
+                            setTempValue(value);
+                            setIsEditing(true);
+                        }}
+                        style={{cursor: 'pointer'}}
+                    >
+                        {value || '-'}
+                    </td>
+                );
+            }
+
+            return (
+                <td>
+                    <input
+                        type={type}
+                        value={tempValue}
+                        onChange={(e) => setTempValue(e.target.value)}
+                        onBlur={() => {
+                            if (tempValue !== value) {
+                                onChange(tempValue);
+                            }
+                            setIsEditing(false);
+                        }}
+                        onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
                                 if (tempValue !== value) {
                                     onChange(tempValue);
                                 }
                                 setIsEditing(false);
-                            }}
-                            onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                    if (tempValue !== value) {
-                                        onChange(tempValue);
-                                    }
-                                    setIsEditing(false);
-                                }
-                            }}
-                            autoFocus
-                            style={{
-                                width: '100%',
-                                padding: '0.25rem',
-                                border: '2px solid #2c5f2d',
-                                borderRadius: '4px'
-                            }}
-                        />
-                    </td>
-                );
-            };
+                            }
+                        }}
+                        autoFocus
+                        style={{
+                            width: '100%',
+                            padding: '0.25rem',
+                            border: '2px solid #2c5f2d',
+                            borderRadius: '4px'
+                        }}
+                    />
+                </td>
+            );
+        }
+
+        function DashboardView({ checkouts, faults, deleteCheckout, updateCheckout }) {
+            const totalSoldiers = checkouts.length;
+            const pendingFaults = faults.filter(f => f.status === 'pending').length;
 
             return (
                 <div>
@@ -983,18 +981,8 @@
                         const res = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/dailyReport.json');
                         if (res.ok) {
                             const data = await res.json();
-                            if (data && data.content) {
-                                // Check if it's the old format (contains names like "דני", "מאור")
-                                // If so, ignore it and use generated report
-                                const hasOldFormat = data.content.includes('דני') || 
-                                                    data.content.includes('מאור') || 
-                                                    data.content.includes('איזפי') ||
-                                                    data.content.includes('(') ||
-                                                    !data.content.includes('מ״מ');
-                                
-                                if (!hasOldFormat) {
-                                    setSavedReport(data.content);
-                                }
+                            if (data && typeof data.content === 'string') {
+                                setSavedReport(data.content);
                             }
                         }
                     } catch (e) {
@@ -1004,7 +992,7 @@
                     }
                 };
                 load();
-            }, []);;
+            }, []);
 
             const generateReport = () => {
                 let r = 'דוח צ\n*פלוגה כ׳*\n\n';
@@ -1061,6 +1049,21 @@
                     hamal.forEach(s => {
                         const last4 = (s.soldierId || '????').slice(-4);
                         r += `חמל ${last4}\n`;
+                    });
+                    r += '\n';
+                }
+
+                // תקלות
+                const pendingFaults = faults.filter(f => f.status === 'pending');
+                r += 'תקלות פתוחות:\n';
+                if (pendingFaults.length === 0) {
+                    r += 'אין תקלות פתוחות\n';
+                } else {
+                    pendingFaults.forEach(f => {
+                        const unit = f.unit || 'יחידה לא ידועה';
+                        const equip = f.equipmentType || 'ציוד לא ידוע';
+                        const desc = f.description || '';
+                        r += `- ${unit} – ${equip}${desc ? `: ${desc}` : ''}\n`;
                     });
                 }
 
