@@ -407,15 +407,6 @@
 
         const UNITS = ['מחלקה 1', 'מחלקה 2', 'מחלקה 3', 'חפק', 'חמל', 'מפלג'];
 
-        // Hash password with SHA-256 (stored in Firebase as hash only)
-        async function hashPassword(password) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(password);
-            const digest = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(digest));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        }
-
         const storage = {
             save: (key, data) => localStorage.setItem(key, JSON.stringify(data)),
             load: (key) => {
@@ -436,64 +427,17 @@
             const [faults, setFaults] = useState([]);
             const [spareEquipment, setSpareEquipment] = useState([]);
 
-            // auth state
-            const [passwordHash, setPasswordHash] = useState(null);
-            const [isAuthLoading, setIsAuthLoading] = useState(true);
-            const [isAuthenticated, setIsAuthenticated] = useState(false);
-            const [passwordInput, setPasswordInput] = useState('');
-            const [authError, setAuthError] = useState('');
-
-            const loadPasswordConfig = async () => {
-                const url = 'https://plugat-kaf-default-rtdb.firebaseio.com/passwordHash.json';
-                try {
-                    const res = await fetch(url);
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (typeof data === 'string' && data.length > 0) {
-                            setPasswordHash(data);
-                            return;
-                        }
-                    }
-                } catch (e) {
-                    console.error('Error loading password from Firebase:', e);
-                }
-
-                // If we got here, initialize default password hash (0209) in Firebase
-                try {
-                    const defaultHash = await hashPassword('0209');
-                    try {
-                        await fetch(url, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(defaultHash)
-                        });
-                    } catch (e) {
-                        console.error('Error saving default password hash to Firebase:', e);
-                    }
-                    setPasswordHash(defaultHash);
-                } catch (e) {
-                    console.error('Error hashing default password:', e);
-                }
-            };
-
             useEffect(() => {
-                let interval = null;
+                initData();
+                loadData();
+                
                 const handleStorageChange = () => loadData();
-
-                const initAll = async () => {
-                    await loadPasswordConfig();
-                    initData();
-                    loadData();
-                    window.addEventListener('storage', handleStorageChange);
-                    interval = setInterval(loadData, 2000);
-                    setIsAuthLoading(false);
-                };
-
-                initAll();
-
+                window.addEventListener('storage', handleStorageChange);
+                const interval = setInterval(loadData, 2000);
+                
                 return () => {
                     window.removeEventListener('storage', handleStorageChange);
-                    if (interval) clearInterval(interval);
+                    clearInterval(interval);
                 };
             }, []);
 
@@ -539,13 +483,6 @@
                 setFaults(newFaults);
             };
 
-            const deleteFault = (faultId) => {
-                if (!confirm('האם למחוק תקלה זו?')) return;
-                const newFaults = faults.filter(f => f.id !== faultId);
-                storage.save('faults', newFaults);
-                setFaults(newFaults);
-            };
-
             const deleteCheckout = (id) => {
                 if (confirm('האם אתה בטוח שברצונך למחוק רישום זה?')) {
                     const newCheckouts = checkouts.filter(c => c.id !== id);
@@ -584,61 +521,6 @@
                 }
             };
 
-            const handleLogin = async () => {
-                if (!passwordHash) return;
-                setAuthError('');
-                try {
-                    const enteredHash = await hashPassword(passwordInput);
-                    if (enteredHash === passwordHash) {
-                        setIsAuthenticated(true);
-                        setPasswordInput('');
-                        setAuthError('');
-                    } else {
-                        setAuthError('סיסמה שגויה');
-                    }
-                } catch (e) {
-                    console.error('Error checking password:', e);
-                    setAuthError('שגיאה באימות הסיסמה');
-                }
-            };
-
-            // Loading auth / password config
-            if (isAuthLoading || !passwordHash) {
-                return (
-                    <div className="container" style={{paddingTop: '4rem', textAlign: 'center'}}>
-                        <h2 className="section-title">טוען מערכת...</h2>
-                    </div>
-                );
-            }
-
-            // Not authenticated yet - show password screen
-            if (!isAuthenticated) {
-                return (
-                    <div className="container" style={{paddingTop: '4rem', maxWidth: '400px', margin: '0 auto'}}>
-                        <div className="section">
-                            <h2 className="section-title" style={{textAlign: 'center'}}>כניסה למערכת</h2>
-                            <p style={{textAlign: 'center', marginBottom: '1rem'}}>הכנס סיסמה כדי להמשיך</p>
-                            <input
-                                type="password"
-                                value={passwordInput}
-                                onChange={(e) => setPasswordInput(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
-                                style={{width: '100%', padding: '0.75rem', marginBottom: '0.75rem', fontSize: '1rem', direction: 'ltr'}}
-                            />
-                            {authError && (
-                                <div style={{color: '#d32f2f', marginBottom: '0.5rem', textAlign: 'center'}}>
-                                    {authError}
-                                </div>
-                            )}
-                            <button className="btn" style={{width: '100%'}} onClick={handleLogin}>
-                                התחבר
-                            </button>
-                        </div>
-                    </div>
-                );
-            }
-
-            // Authenticated - show main app
             return (
                 <div>
                     <header className="header">
@@ -705,96 +587,73 @@
                             <ReportView checkouts={checkouts} faults={faults} />
                         )}
                         {currentView === 'faults' && (
-                            <FaultsView 
-                                faults={faults} 
-                                updateFaultStatus={updateFaultStatus} 
-                                deleteFault={deleteFault}
-                            />
+                            <FaultsView faults={faults} updateFaultStatus={updateFaultStatus} />
                         )}
                     </main>
                 </div>
             );
         }
 
-        function EditableCell({ value, onChange, type = 'text' }) {
-            const [isEditing, setIsEditing] = useState(false);
-            const [tempValue, setTempValue] = useState(value);
+        function DashboardView({ checkouts, faults, deleteCheckout, updateCheckout }) {
+            const [editingCell, setEditingCell] = useState(null);
 
-            useEffect(() => {
-                setTempValue(value);
-            }, [value]);
+            const totalSoldiers = checkouts.length;
+            const pendingFaults = faults.filter(f => f.status === 'pending').length;
 
-            if (!isEditing) {
+            const EditableCell = ({ value, onChange, type = 'text' }) => {
+                const [isEditing, setIsEditing] = useState(false);
+                const [tempValue, setTempValue] = useState(value);
+
+                useEffect(() => {
+                    setTempValue(value);
+                }, [value]);
+
+                if (!isEditing) {
+                    return (
+                        <td 
+                            className="editable-cell"
+                            onClick={() => {
+                                setTempValue(value);
+                                setIsEditing(true);
+                            }}
+                            style={{cursor: 'pointer'}}
+                        >
+                            {value || '-'}
+                        </td>
+                    );
+                }
+
                 return (
-                    <td 
-                        className="editable-cell"
-                        onClick={() => {
-                            setTempValue(value);
-                            setIsEditing(true);
-                        }}
-                        style={{cursor: 'pointer'}}
-                    >
-                        {value || '-'}
-                    </td>
-                );
-            }
-
-            return (
-                <td>
-                    <input
-                        type={type}
-                        value={tempValue}
-                        onChange={(e) => setTempValue(e.target.value)}
-                        onBlur={() => {
-                            if (tempValue !== value) {
-                                onChange(tempValue);
-                            }
-                            setIsEditing(false);
-                        }}
-                        onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
+                    <td>
+                        <input
+                            type={type}
+                            value={tempValue}
+                            onChange={(e) => setTempValue(e.target.value)}
+                            onBlur={() => {
                                 if (tempValue !== value) {
                                     onChange(tempValue);
                                 }
                                 setIsEditing(false);
-                            }
-                        }}
-                        autoFocus
-                        style={{
-                            width: '100%',
-                            padding: '0.25rem',
-                            border: '2px solid #2c5f2d',
-                            borderRadius: '4px'
-                        }}
-                    />
-                </td>
-            );
-        }
-
-        function BoolCell({ value, onChange }) {
-            const isTrue = !!value;
-            const display = isTrue ? '✓' : '✗';
-            const color = isTrue ? '#2e7d32' : '#d32f2f';
-
-            return (
-                <td 
-                    className="editable-cell"
-                    onClick={() => onChange(!isTrue)}
-                    style={{
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                        fontWeight: 'bold',
-                        color
-                    }}
-                >
-                    {display}
-                </td>
-            );
-        }
-
-        function DashboardView({ checkouts, faults, deleteCheckout, updateCheckout }) {
-            const totalSoldiers = checkouts.length;
-            const pendingFaults = faults.filter(f => f.status === 'pending').length;
+                            }}
+                            onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                    if (tempValue !== value) {
+                                        onChange(tempValue);
+                                    }
+                                    setIsEditing(false);
+                                }
+                            }}
+                            autoFocus
+                            style={{
+                                width: '100%',
+                                padding: '0.25rem',
+                                border: '2px solid #2c5f2d',
+                                borderRadius: '4px'
+                            }}
+                        />
+                    </td>
+                );
+            };
 
             return (
                 <div>
@@ -849,16 +708,9 @@
                                                         value={soldier.soldierId}
                                                         onChange={(val) => updateCheckout(soldier.id, 'soldierId', val)}
                                                     />
-                                                    <BoolCell
-                                                        value={soldier.equipment?.['radio624']}
-                                                        onChange={(val) => {
-                                                            const newEquipment = {
-                                                                ...(soldier.equipment || {}),
-                                                                radio624: val
-                                                            };
-                                                            updateCheckout(soldier.id, 'equipment', newEquipment);
-                                                        }}
-                                                    />
+                                                    <td>
+                                                        {soldier.equipment?.['radio624'] ? '✓' : '-'}
+                                                    </td>
                                                     <EditableCell
                                                         value={soldier.equipment?.lionet?.serialNumber || ''}
                                                         onChange={(val) => {
@@ -866,23 +718,17 @@
                                                             updateCheckout(soldier.id, 'equipment', newEquipment);
                                                         }}
                                                     />
-                                                    <BoolCell
-                                                        value={soldier.equipment?.charger}
+                                                    <EditableCell
+                                                        value={soldier.equipment?.charger ? '✓' : ''}
                                                         onChange={(val) => {
-                                                            const newEquipment = {
-                                                                ...(soldier.equipment || {}),
-                                                                charger: val
-                                                            };
+                                                            const newEquipment = {...(soldier.equipment || {}), charger: val === '✓' || val === 'v' || val === 'V'};
                                                             updateCheckout(soldier.id, 'equipment', newEquipment);
                                                         }}
                                                     />
-                                                    <BoolCell
-                                                        value={soldier.equipment?.vest}
+                                                    <EditableCell
+                                                        value={soldier.equipment?.vest ? '✓' : ''}
                                                         onChange={(val) => {
-                                                            const newEquipment = {
-                                                                ...(soldier.equipment || {}),
-                                                                vest: val
-                                                            };
+                                                            const newEquipment = {...(soldier.equipment || {}), vest: val === '✓' || val === 'v' || val === 'V'};
                                                             updateCheckout(soldier.id, 'equipment', newEquipment);
                                                         }}
                                                     />
@@ -1212,15 +1058,19 @@
                     r += '\n';
                 }
 
-                // תקלות
+                // תקלות פתוחות
                 const pendingFaults = faults.filter(f => f.status === 'pending');
                 r += 'תקלות פתוחות:\n';
                 if (pendingFaults.length === 0) {
                     r += 'אין תקלות פתוחות\n';
                 } else {
                     pendingFaults.forEach(f => {
-                        const desc = f.description || '';
-                        r += `- ${desc || 'ללא תיאור'}\n`;
+                        let faultText = f.description || 'ללא תיאור';
+                        // Add location if specified in "other" field  
+                        if (f.otherLocation) {
+                            faultText += ` ב${f.otherLocation}`;
+                        }
+                        r += `- ${faultText}\n`;
                     });
                 }
 
@@ -1293,7 +1143,7 @@
             );
         }
 
-        function FaultsView({ faults, updateFaultStatus, deleteFault }) {
+        function FaultsView({ faults, updateFaultStatus }) {
             const pending = faults.filter(f => f.status === 'pending');
             const resolved = faults.filter(f => f.status === 'resolved');
 
@@ -1381,21 +1231,13 @@
                                                 </div>
                                             )}
                                         </div>
-                                        <div style={{display:'flex', flexDirection:'column', gap:'0.5rem'}}>
-                                            <button 
-                                                className="btn"
-                                                onClick={() => updateFaultStatus(f.id, 'pending')}
-                                                style={{background:'#ff9800'}}
-                                            >
-                                                ↩️ החזר לפתוח
-                                            </button>
-                                            <button 
-                                                className="btn btn-danger"
-                                                onClick={() => deleteFault(f.id)}
-                                            >
-                                                🗑️ מחק תקלה
-                                            </button>
-                                        </div>
+                                        <button 
+                                            className="btn"
+                                            onClick={() => updateFaultStatus(f.id, 'pending')}
+                                            style={{background:'#ff9800',marginRight:'0.5rem'}}
+                                        >
+                                            ↩️ החזר לפתוח
+                                        </button>
                                     </div>
                                 </div>
                             ))
