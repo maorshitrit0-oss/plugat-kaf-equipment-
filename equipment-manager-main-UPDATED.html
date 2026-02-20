@@ -665,16 +665,27 @@
                                                     <td>
                                                         {soldier.equipment?.['radio624'] ? '✓' : '-'}
                                                     </td>
-                                                    <td>
-                                                        {soldier.equipment?.lionet?.serialNumber || 
-                                                         (soldier.equipment?.lionet ? '✓' : '-')}
-                                                    </td>
-                                                    <td>
-                                                        {soldier.equipment?.charger ? '✓' : '-'}
-                                                    </td>
-                                                    <td>
-                                                        {soldier.equipment?.vest ? '✓' : '-'}
-                                                    </td>
+                                                    <EditableCell
+                                                        value={soldier.equipment?.lionet?.serialNumber || ''}
+                                                        onChange={(val) => {
+                                                            const newEquipment = {...(soldier.equipment || {}), lionet: val ? {serialNumber: val} : null};
+                                                            updateCheckout(soldier.id, 'equipment', newEquipment);
+                                                        }}
+                                                    />
+                                                    <EditableCell
+                                                        value={soldier.equipment?.charger ? '✓' : ''}
+                                                        onChange={(val) => {
+                                                            const newEquipment = {...(soldier.equipment || {}), charger: val === '✓' || val === 'v' || val === 'V'};
+                                                            updateCheckout(soldier.id, 'equipment', newEquipment);
+                                                        }}
+                                                    />
+                                                    <EditableCell
+                                                        value={soldier.equipment?.vest ? '✓' : ''}
+                                                        onChange={(val) => {
+                                                            const newEquipment = {...(soldier.equipment || {}), vest: val === '✓' || val === 'v' || val === 'V'};
+                                                            updateCheckout(soldier.id, 'equipment', newEquipment);
+                                                        }}
+                                                    />
                                                     <td>
                                                         <button
                                                             className="btn btn-danger btn-small"
@@ -851,6 +862,7 @@
             
             const signupUrl = baseUrl + 'soldier-signup-UPDATED.html';
             const faultUrl = baseUrl + 'fault-report-UPDATED.html';
+            const managerUrl = baseUrl + 'equipment-manager-main-UPDATED.html';
 
             const copyLink = (url, type) => {
                 navigator.clipboard.writeText(url);
@@ -867,20 +879,17 @@
                     )}
 
                     <div className="section">
-                        <h2 className="section-title">קישורים לחיילים</h2>
+                        <h2 className="section-title">קישורים</h2>
                         
                         <div className="link-box">
                             <div className="link-header">📝 טופס חתימה על ציוד</div>
                             <p style={{color: '#666', marginBottom: '0.5rem', fontSize: '0.9rem'}}>
-                                החיילים ימלאו את הטופס וירשמו על הציוד שהם מקבלים
+                                לחיילים - למלא ולחתום על הציוד
                             </p>
                             <div className="link-url">
-                                <input type="text" value={signupUrl} readOnly />
-                                <button 
-                                    className="btn"
-                                    onClick={() => copyLink(signupUrl, 'חתימה')}
-                                >
-                                    העתק
+                                <input type="text" value={signupUrl} readOnly onClick={(e) => e.target.select()} />
+                                <button className="btn" onClick={() => copyLink(signupUrl, 'חתימה')}>
+                                    📋 העתק
                                 </button>
                             </div>
                         </div>
@@ -888,15 +897,25 @@
                         <div className="link-box">
                             <div className="link-header">⚠️ טופס דיווח תקלות</div>
                             <p style={{color: '#666', marginBottom: '0.5rem', fontSize: '0.9rem'}}>
-                                החיילים ידווחו כאן על תקלות בציוד
+                                לחיילים - לדווח על תקלות בציוד
                             </p>
                             <div className="link-url">
-                                <input type="text" value={faultUrl} readOnly />
-                                <button 
-                                    className="btn"
-                                    onClick={() => copyLink(faultUrl, 'תקלות')}
-                                >
-                                    העתק
+                                <input type="text" value={faultUrl} readOnly onClick={(e) => e.target.select()} />
+                                <button className="btn" onClick={() => copyLink(faultUrl, 'תקלות')}>
+                                    📋 העתק
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="link-box">
+                            <div className="link-header">🎯 מערכת ניהול ציוד</div>
+                            <p style={{color: '#666', marginBottom: '0.5rem', fontSize: '0.9rem'}}>
+                                למפקד - גישה למערכת הניהול
+                            </p>
+                            <div className="link-url">
+                                <input type="text" value={managerUrl} readOnly onClick={(e) => e.target.select()} />
+                                <button className="btn" onClick={() => copyLink(managerUrl, 'ניהול')}>
+                                    📋 העתק
                                 </button>
                             </div>
                         </div>
@@ -906,103 +925,194 @@
         }
 
         function ReportView({ checkouts, faults }) {
-            const generateReport = () => {
-                let report = 'דוח צ׳\n*פלוגה כ׳*\n\n';
+            const [savedReport, setSavedReport] = useState('');
+            const [isEditing, setIsEditing] = useState(false);
+            const [editedText, setEditedText] = useState('');
 
-                UNITS.forEach(unitName => {
-                    const soldiers = checkouts.filter(c => c.unit === unitName);
-                    if (soldiers.length === 0) return;
-
-                    report += `${unitName}:\n`;
-
-                    soldiers.forEach(soldier => {
-                        const parts = [];
-                        if (soldier.equipment?.radio624) parts.push('קשר 624');
-                        if (soldier.equipment?.lionet) {
-                            const serial = soldier.equipment.lionet.serialNumber;
-                            parts.push(serial ? `ליונט ${serial}` : 'ליונט');
+            // Load saved report from Firebase
+            useEffect(() => {
+                const load = async () => {
+                    try {
+                        const res = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/dailyReport.json');
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && data.content) setSavedReport(data.content);
                         }
-                        if (soldier.equipment?.vest) parts.push('מעד');
+                    } catch (e) {}
+                };
+                load();
+            }, []);
 
-                        report += `${soldier.soldierName} (${soldier.soldierId}): ${parts.join(', ')}\n`;
-                    });
+            const generateReport = () => {
+                if (savedReport) return savedReport;
 
-                    report += '\n';
+                let r = 'דוח צ\n*פלוגה כ׳*\n\n';
+
+                r += 'חפק:\n';
+                r += 'משואה: [מספר סידורי]\n';
+                r += 'כרטיס: [מספר סידורי]\n';
+                r += 'משיב מיקום: [מספר סידורי]\n\n';
+
+                r += 'סיור:\n';
+                r += 'משואה: קיים במשקשיה\n';
+                r += 'כרטיס: קיים במשקשיה\n';
+                r += 'משיב מיקום: קיים במשקשיה\n\n';
+
+                r += 'חמל:\n';
+                r += 'כרטיס מחשב משואה: [מספר סידורי]\n\n';
+
+                r += 'משרד מ״פ:\n';
+                r += 'כרטיס מחשב משואה: [מספר סידורי]\n';
+                r += 'כרטיס מחשב מנהלתי: [מספר סידורי]\n\n';
+
+                r += 'חדן:\n';
+                r += 'משיב מיקום: [מספר סידורי]\n';
+                r += 'כרטיס: [מספר סידורי]\n\n';
+
+                // ליונטים
+                r += 'ליונטים:\n';
+                const lionets = checkouts.filter(c => c.unit === 'חפק' || c.unit === 'חמל');
+                lionets.forEach(s => {
+                    const last4 = (s.soldierId || '????').slice(-4);
+                    if (s.role === 'מפ') r += `מפ ${last4}\n`;
+                    else if (s.role === 'סמפ') r += `סמפ ${last4}\n`;
+                    else r += `${last4}\n`;
                 });
+                r += '\n';
 
-                const pendingFaults = faults.filter(f => f.status === 'pending');
-                if (pendingFaults.length > 0) {
-                    report += 'סטטוס תקלות פלוגה כ׳ (יוקדים):\n';
-                    pendingFaults.forEach((fault, index) => {
-                        report += `${index + 1}. ${fault.equipmentType} - ${fault.description} (${fault.soldierName}, ${fault.unit})\n`;
+                // מחלקות
+                for (let i = 1; i <= 3; i++) {
+                    const squad = checkouts.filter(c => c.unit === `מחלקה ${i}`);
+                    if (squad.length === 0) continue;
+                    r += `מחלקה ${i}:\n`;
+                    squad.forEach(s => {
+                        const last4 = (s.soldierId || '????').slice(-4);
+                        if (s.role === 'ממ') r += `${last4} מ״מ\n`;
+                        else r += `${last4}\n`;
                     });
-                } else {
-                    report += 'סטטוס תקלות פלוגה כ׳: ללא תקלות ✓\n';
+                    r += '\n';
                 }
 
-                return report;
+                // חמל
+                const hamal = checkouts.filter(c => c.unit === 'חמל' && c.role === 'מפ');
+                if (hamal.length > 0) {
+                    r += 'חמל:\n';
+                    hamal.forEach(s => {
+                        const last4 = (s.soldierId || '????').slice(-4);
+                        r += `חמל ${last4}\n`;
+                    });
+                }
+
+                return r;
             };
 
-            const report = generateReport();
+            const save = async () => {
+                try {
+                    await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/dailyReport.json', {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            content: editedText,
+                            updated: new Date().toISOString()
+                        })
+                    });
+                    setSavedReport(editedText);
+                    setIsEditing(false);
+                    alert('✓ נשמר');
+                } catch (e) {
+                    alert('❌ שגיאה');
+                }
+            };
 
             return (
                 <div>
                     <div className="section">
-                        <h2 className="section-title">דוח יומי לגדוד</h2>
-                        <div className="report-preview">{report}</div>
-                        <div style={{display: 'flex', gap: '1rem', marginTop: '1rem'}}>
-                            <button 
-                                className="btn"
-                                onClick={() => navigator.clipboard.writeText(report)}
-                            >
-                                📋 העתק דוח
-                            </button>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:'1rem'}}>
+                            <h2 className="section-title">דוח יומי</h2>
+                            <div style={{display:'flex',gap:'0.5rem'}}>
+                                {!isEditing ? (
+                                    <>
+                                        <button className="btn" onClick={() => { setEditedText(generateReport()); setIsEditing(true); }}>
+                                            ✏️ ערוך
+                                        </button>
+                                        <button className="btn" onClick={() => { navigator.clipboard.writeText(generateReport()); alert('✓ הועתק'); }}>
+                                            📋 העתק
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button className="btn" onClick={save} style={{background:'#4caf50'}}>✓ שמור</button>
+                                        <button className="btn" onClick={() => setIsEditing(false)} style={{background:'#999'}}>✕ ביטול</button>
+                                    </>
+                                )}
+                            </div>
                         </div>
+                        {!isEditing ? (
+                            <div className="report-preview">{generateReport()}</div>
+                        ) : (
+                            <textarea
+                                value={editedText}
+                                onChange={(e) => setEditedText(e.target.value)}
+                                style={{width:'100%',minHeight:'500px',padding:'1rem',fontFamily:'monospace',fontSize:'0.95rem',border:'2px solid #2c5f2d',borderRadius:'4px',direction:'rtl'}}
+                            />
+                        )}
                     </div>
                 </div>
             );
         }
 
         function FaultsView({ faults, updateFaultStatus }) {
-            const pendingFaults = faults.filter(f => f.status === 'pending');
-            const resolvedFaults = faults.filter(f => f.status === 'resolved');
+            const pending = faults.filter(f => f.status === 'pending');
+            const resolved = faults.filter(f => f.status === 'resolved');
+
+            const formatDate = (d) => {
+                return new Date(d).toLocaleString('he-IL', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            };
+
+            const getTimeAgo = (d) => {
+                const diff = Date.now() - new Date(d);
+                const mins = Math.floor(diff / 60000);
+                const hours = Math.floor(diff / 3600000);
+                const days = Math.floor(diff / 86400000);
+                if (mins < 60) return `${mins} דקות`;
+                if (hours < 24) return `${hours} שעות`;
+                return `${days} ימים`;
+            };
 
             return (
                 <div>
                     <div className="section">
-                        <h2 className="section-title">תקלות ממתינות ({pendingFaults.length})</h2>
-
-                        {pendingFaults.length === 0 ? (
-                            <p style={{textAlign: 'center', color: '#4caf50', padding: '2rem'}}>
-                                ✓ אין תקלות ממתינות
-                            </p>
+                        <h2 className="section-title">תקלות פתוחות ({pending.length})</h2>
+                        {pending.length === 0 ? (
+                            <p style={{textAlign:'center',color:'#4caf50',padding:'2rem'}}>✓ אין תקלות פתוחות</p>
                         ) : (
-                            pendingFaults.map(fault => (
-                                <div key={fault.id} className="fault-item">
-                                    <div style={{marginBottom: '0.5rem'}}>
-                                        <strong>{fault.soldierName}</strong> - {fault.unit}
+                            pending.map(f => (
+                                <div key={f.id} className="fault-item">
+                                    <div style={{marginBottom:'0.5rem'}}>
+                                        <strong>{f.soldierName}</strong> - {f.unit}
+                                        {f.role && <span> ({f.role})</span>}
                                     </div>
-                                    <div style={{marginBottom: '0.5rem'}}>
-                                        מ.א: {fault.soldierId}
+                                    <div style={{marginBottom:'0.5rem'}}>מ.א: {f.soldierId}</div>
+                                    <div style={{marginBottom:'0.5rem'}}>
+                                        <strong>ציוד:</strong> {f.equipmentType}
+                                        {f.otherLocation && <span> - {f.otherLocation}</span>}
                                     </div>
-                                    <div style={{marginBottom: '0.5rem'}}>
-                                        <strong>ציוד:</strong> {fault.equipmentType}
+                                    <div style={{background:'white',padding:'0.5rem',borderRadius:'4px',marginBottom:'0.5rem'}}>
+                                        {f.description}
                                     </div>
-                                    <div style={{
-                                        background: 'white',
-                                        padding: '0.5rem',
-                                        borderRadius: '4px',
-                                        marginBottom: '0.5rem'
-                                    }}>
-                                        {fault.description}
+                                    <div style={{fontSize:'0.85rem',color:'#666',marginBottom:'0.25rem'}}>
+                                        📅 נפתח: {formatDate(f.date)}
                                     </div>
-                                    <div style={{fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem'}}>
-                                        דווח ב: {new Date(fault.date).toLocaleString('he-IL')}
+                                    <div style={{fontSize:'0.85rem',color:'#d32f2f',fontWeight:'bold',marginBottom:'0.5rem'}}>
+                                        ⏱️ לפני {getTimeAgo(f.date)}
                                     </div>
-                                    <button 
-                                        className="btn"
-                                        onClick={() => updateFaultStatus(fault.id, 'resolved')}
-                                    >
+                                    <button className="btn" onClick={() => updateFaultStatus(f.id, 'resolved')}>
                                         ✓ סמן כטופל
                                     </button>
                                 </div>
@@ -1010,19 +1120,47 @@
                         )}
                     </div>
 
-                    {resolvedFaults.length > 0 && (
-                        <div className="section">
-                            <h2 className="section-title">תקלות שטופלו</h2>
-                            {resolvedFaults.slice(-10).reverse().map(fault => (
-                                <div key={fault.id} className="fault-item fault-resolved">
-                                    <strong>{fault.soldierName}</strong> - {fault.equipmentType}
-                                    <div style={{fontSize: '0.9rem', color: '#666'}}>
-                                        {fault.description}
+                    <div className="section">
+                        <h2 className="section-title">תקלות שטופלו ({resolved.length})</h2>
+                        {resolved.length === 0 ? (
+                            <p style={{textAlign:'center',color:'#999',padding:'2rem'}}>אין תקלות שטופלו</p>
+                        ) : (
+                            resolved.slice().reverse().map(f => (
+                                <div key={f.id} className="fault-item fault-resolved">
+                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'start'}}>
+                                        <div style={{flex:1}}>
+                                            <div style={{marginBottom:'0.5rem'}}>
+                                                <strong>{f.soldierName}</strong> - {f.unit}
+                                                {f.role && <span> ({f.role})</span>}
+                                            </div>
+                                            <div style={{marginBottom:'0.5rem'}}>
+                                                <strong>ציוד:</strong> {f.equipmentType}
+                                                {f.otherLocation && <span> - {f.otherLocation}</span>}
+                                            </div>
+                                            <div style={{background:'white',padding:'0.5rem',borderRadius:'4px',marginBottom:'0.5rem',fontSize:'0.95rem'}}>
+                                                {f.description}
+                                            </div>
+                                            <div style={{fontSize:'0.85rem',color:'#666'}}>
+                                                📅 נפתח: {formatDate(f.date)}
+                                            </div>
+                                            {f.resolvedDate && (
+                                                <div style={{fontSize:'0.85rem',color:'#4caf50',fontWeight:'600'}}>
+                                                    ✓ טופל: {formatDate(f.resolvedDate)}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <button 
+                                            className="btn"
+                                            onClick={() => updateFaultStatus(f.id, 'pending')}
+                                            style={{background:'#ff9800',marginRight:'0.5rem'}}
+                                        >
+                                            ↩️ החזר לפתוח
+                                        </button>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                            ))
+                        )}
+                    </div>
                 </div>
             );
         }
