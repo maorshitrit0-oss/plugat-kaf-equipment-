@@ -443,13 +443,41 @@
 
             const loadData = () => {
                 setCheckouts(storage.load('checkouts') || []);
-                setFaults(storage.load('faults') || []);
+                
+                // Load faults and auto-delete resolved ones older than 90 days
+                const allFaults = storage.load('faults') || [];
+                const now = Date.now();
+                const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
+                
+                const filteredFaults = allFaults.filter(f => {
+                    // Keep all pending faults
+                    if (f.status === 'pending') return true;
+                    
+                    // For resolved faults, check if resolved within 90 days
+                    if (f.status === 'resolved' && f.resolvedDate) {
+                        const resolvedTime = new Date(f.resolvedDate).getTime();
+                        return resolvedTime > ninetyDaysAgo;
+                    }
+                    
+                    return true;
+                });
+                
+                // If any faults were filtered out, save the updated list
+                if (filteredFaults.length !== allFaults.length) {
+                    storage.save('faults', filteredFaults);
+                }
+                
+                setFaults(filteredFaults);
                 setSpareEquipment(storage.load('spareEquipment') || []);
             };
 
             const updateFaultStatus = (faultId, status) => {
                 const newFaults = faults.map(f => 
-                    f.id === faultId ? { ...f, status } : f
+                    f.id === faultId ? { 
+                        ...f, 
+                        status,
+                        resolvedDate: status === 'resolved' ? new Date().toISOString() : f.resolvedDate
+                    } : f
                 );
                 storage.save('faults', newFaults);
                 setFaults(newFaults);
@@ -576,11 +604,19 @@
                 const [isEditing, setIsEditing] = useState(false);
                 const [tempValue, setTempValue] = useState(value);
 
+                useEffect(() => {
+                    setTempValue(value);
+                }, [value]);
+
                 if (!isEditing) {
                     return (
                         <td 
                             className="editable-cell"
-                            onClick={() => setIsEditing(true)}
+                            onClick={() => {
+                                setTempValue(value);
+                                setIsEditing(true);
+                            }}
+                            style={{cursor: 'pointer'}}
                         >
                             {value || '-'}
                         </td>
@@ -594,16 +630,26 @@
                             value={tempValue}
                             onChange={(e) => setTempValue(e.target.value)}
                             onBlur={() => {
-                                onChange(tempValue);
+                                if (tempValue !== value) {
+                                    onChange(tempValue);
+                                }
                                 setIsEditing(false);
                             }}
                             onKeyPress={(e) => {
                                 if (e.key === 'Enter') {
-                                    onChange(tempValue);
+                                    if (tempValue !== value) {
+                                        onChange(tempValue);
+                                    }
                                     setIsEditing(false);
                                 }
                             }}
                             autoFocus
+                            style={{
+                                width: '100%',
+                                padding: '0.25rem',
+                                border: '2px solid #2c5f2d',
+                                borderRadius: '4px'
+                            }}
                         />
                     </td>
                 );
@@ -938,7 +984,17 @@
                         if (res.ok) {
                             const data = await res.json();
                             if (data && data.content) {
-                                setSavedReport(data.content);
+                                // Check if it's the old format (contains names like "דני", "מאור")
+                                // If so, ignore it and use generated report
+                                const hasOldFormat = data.content.includes('דני') || 
+                                                    data.content.includes('מאור') || 
+                                                    data.content.includes('איזפי') ||
+                                                    data.content.includes('(') ||
+                                                    !data.content.includes('מ״מ');
+                                
+                                if (!hasOldFormat) {
+                                    setSavedReport(data.content);
+                                }
                             }
                         }
                     } catch (e) {
@@ -948,7 +1004,7 @@
                     }
                 };
                 load();
-            }, []);
+            }, []);;
 
             const generateReport = () => {
                 let r = 'דוח צ\n*פלוגה כ׳*\n\n';
