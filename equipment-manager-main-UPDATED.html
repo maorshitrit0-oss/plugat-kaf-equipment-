@@ -771,6 +771,27 @@
             );
         }
 
+        function BoolCell({ value, onChange }) {
+            const isTrue = !!value;
+            const display = isTrue ? '✓' : '✗';
+            const color = isTrue ? '#2e7d32' : '#d32f2f';
+
+            return (
+                <td 
+                    className="editable-cell"
+                    onClick={() => onChange(!isTrue)}
+                    style={{
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        fontWeight: 'bold',
+                        color
+                    }}
+                >
+                    {display}
+                </td>
+            );
+        }
+
         function DashboardView({ checkouts, faults, deleteCheckout, updateCheckout }) {
             const totalSoldiers = checkouts.length;
             const pendingFaults = faults.filter(f => f.status === 'pending').length;
@@ -828,9 +849,16 @@
                                                         value={soldier.soldierId}
                                                         onChange={(val) => updateCheckout(soldier.id, 'soldierId', val)}
                                                     />
-                                                    <td>
-                                                        {soldier.equipment?.['radio624'] ? '✓' : '-'}
-                                                    </td>
+                                                    <BoolCell
+                                                        value={soldier.equipment?.['radio624']}
+                                                        onChange={(val) => {
+                                                            const newEquipment = {
+                                                                ...(soldier.equipment || {}),
+                                                                radio624: val
+                                                            };
+                                                            updateCheckout(soldier.id, 'equipment', newEquipment);
+                                                        }}
+                                                    />
                                                     <EditableCell
                                                         value={soldier.equipment?.lionet?.serialNumber || ''}
                                                         onChange={(val) => {
@@ -838,17 +866,23 @@
                                                             updateCheckout(soldier.id, 'equipment', newEquipment);
                                                         }}
                                                     />
-                                                    <EditableCell
-                                                        value={soldier.equipment?.charger ? '✓' : ''}
+                                                    <BoolCell
+                                                        value={soldier.equipment?.charger}
                                                         onChange={(val) => {
-                                                            const newEquipment = {...(soldier.equipment || {}), charger: val === '✓' || val === 'v' || val === 'V'};
+                                                            const newEquipment = {
+                                                                ...(soldier.equipment || {}),
+                                                                charger: val
+                                                            };
                                                             updateCheckout(soldier.id, 'equipment', newEquipment);
                                                         }}
                                                     />
-                                                    <EditableCell
-                                                        value={soldier.equipment?.vest ? '✓' : ''}
+                                                    <BoolCell
+                                                        value={soldier.equipment?.vest}
                                                         onChange={(val) => {
-                                                            const newEquipment = {...(soldier.equipment || {}), vest: val === '✓' || val === 'v' || val === 'V'};
+                                                            const newEquipment = {
+                                                                ...(soldier.equipment || {}),
+                                                                vest: val
+                                                            };
                                                             updateCheckout(soldier.id, 'equipment', newEquipment);
                                                         }}
                                                     />
@@ -1185,10 +1219,8 @@
                     r += 'אין תקלות פתוחות\n';
                 } else {
                     pendingFaults.forEach(f => {
-                        const unit = f.unit || 'יחידה לא ידועה';
-                        const equip = f.equipmentType || 'ציוד לא ידוע';
                         const desc = f.description || '';
-                        r += `- ${unit} – ${equip}${desc ? `: ${desc}` : ''}\n`;
+                        r += `- ${desc || 'ללא תיאור'}\n`;
                     });
                 }
 
