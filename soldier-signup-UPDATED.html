@@ -296,6 +296,20 @@
                     <option value="מפלג">מפלג</option>
                 </select>
             </div>
+                <div class="form-group">
+                    <label for="role">תפקיד *</label>
+                    <select id="role" required>
+                        <option value="">בחר תפקיד</option>
+                        <option value="מפ">מפ</option>
+                        <option value="סמפ">סמפ</option>
+                        <option value="ממ">ממ</option>
+                        <option value="סמל">סמל</option>
+                        <option value="מכ">מכ</option>
+                        <option value="קשר">קשר</option>
+                        <option value="אחר">אחר</option>
+                    </select>
+                </div>
+
 
             <div class="equipment-section">
                 <div class="equipment-title">בחר את הציוד שאתה מקבל:</div>
@@ -422,6 +436,7 @@
                     soldierName,
                     soldierId,
                     unit,
+                    role: document.getElementById("role").value,
                     equipment,
                     date: new Date().toISOString()
                 };
