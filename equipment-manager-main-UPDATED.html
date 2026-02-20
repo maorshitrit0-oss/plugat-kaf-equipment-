@@ -583,28 +583,28 @@
                 }
             }, [faults]);
 
-            const loadData = async () => {
-                const checkoutsData = await storage.load('checkouts');
-                const faultsData = await storage.load('faults');
-                const spareData = await storage.load('spareEquipment');
+            const loadData = () => {
+                const checkoutsData = storage.load('checkouts');
+                const faultsData = storage.load('faults');
+                const spareData = storage.load('spareEquipment');
                 
                 setCheckouts(checkoutsData || []);
                 setFaults(faultsData || []);
                 setSpareEquipment(spareData || []);
             };
 
-            const updateFaultStatus = async (faultId, status) => {
+            const updateFaultStatus = (faultId, status) => {
                 const newFaults = faults.map(f => 
                     f.id === faultId ? { ...f, status } : f
                 );
-                await storage.save('faults', newFaults);
+                storage.save('faults', newFaults);
                 setFaults(newFaults);
             };
 
             const deleteCheckout = (id) => {
                 if (confirm('האם אתה בטוח שברצונך למחוק רישום זה?')) {
                     const newCheckouts = checkouts.filter(c => c.id !== id);
-                    await storage.save('checkouts', newCheckouts);
+                    storage.save('checkouts', newCheckouts);
                     setCheckouts(newCheckouts);
                 }
             };
@@ -613,13 +613,13 @@
                 const newCheckouts = checkouts.map(c => 
                     c.id === id ? { ...c, [field]: value } : c
                 );
-                await storage.save('checkouts', newCheckouts);
+                storage.save('checkouts', newCheckouts);
                 setCheckouts(newCheckouts);
             };
 
             const addSpareEquipment = (item) => {
                 const newSpare = [...spareEquipment, { ...item, id: Date.now() }];
-                await storage.save('spareEquipment', newSpare);
+                storage.save('spareEquipment', newSpare);
                 setSpareEquipment(newSpare);
             };
 
@@ -627,14 +627,14 @@
                 const newSpare = spareEquipment.map(s => 
                     s.id === id ? { ...s, [field]: value } : s
                 );
-                await storage.save('spareEquipment', newSpare);
+                storage.save('spareEquipment', newSpare);
                 setSpareEquipment(newSpare);
             };
 
             const deleteSpareEquipment = (id) => {
                 if (confirm('האם למחוק פריט זה?')) {
                     const newSpare = spareEquipment.filter(s => s.id !== id);
-                    await storage.save('spareEquipment', newSpare);
+                    storage.save('spareEquipment', newSpare);
                     setSpareEquipment(newSpare);
                 }
             };
