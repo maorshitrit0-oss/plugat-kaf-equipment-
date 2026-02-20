@@ -925,27 +925,32 @@
         }
 
         function ReportView({ checkouts, faults }) {
-            const [savedReport, setSavedReport] = useState('');
+            const [savedReport, setSavedReport] = useState(null);
             const [isEditing, setIsEditing] = useState(false);
             const [editedText, setEditedText] = useState('');
+            const [isLoading, setIsLoading] = useState(true);
 
-            // Load saved report from Firebase
+            // Load saved report from Firebase ONCE
             useEffect(() => {
                 const load = async () => {
                     try {
                         const res = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/dailyReport.json');
                         if (res.ok) {
                             const data = await res.json();
-                            if (data && data.content) setSavedReport(data.content);
+                            if (data && data.content) {
+                                setSavedReport(data.content);
+                            }
                         }
-                    } catch (e) {}
+                    } catch (e) {
+                        console.error('Error loading report:', e);
+                    } finally {
+                        setIsLoading(false);
+                    }
                 };
                 load();
             }, []);
 
             const generateReport = () => {
-                if (savedReport) return savedReport;
-
                 let r = 'דוח צ\n*פלוגה כ׳*\n\n';
 
                 r += 'חפק:\n';
@@ -1018,11 +1023,22 @@
                     });
                     setSavedReport(editedText);
                     setIsEditing(false);
-                    alert('✓ נשמר');
+                    alert('✓ הדוח נשמר');
                 } catch (e) {
-                    alert('❌ שגיאה');
+                    alert('❌ שגיאה בשמירה');
                 }
             };
+
+            // Show the saved report if exists, otherwise generate
+            const displayReport = savedReport !== null ? savedReport : generateReport();
+
+            if (isLoading) {
+                return (
+                    <div className="section">
+                        <p style={{textAlign:'center',padding:'2rem'}}>טוען דוח...</p>
+                    </div>
+                );
+            }
 
             return (
                 <div>
@@ -1032,10 +1048,10 @@
                             <div style={{display:'flex',gap:'0.5rem'}}>
                                 {!isEditing ? (
                                     <>
-                                        <button className="btn" onClick={() => { setEditedText(generateReport()); setIsEditing(true); }}>
+                                        <button className="btn" onClick={() => { setEditedText(displayReport); setIsEditing(true); }}>
                                             ✏️ ערוך
                                         </button>
-                                        <button className="btn" onClick={() => { navigator.clipboard.writeText(generateReport()); alert('✓ הועתק'); }}>
+                                        <button className="btn" onClick={() => { navigator.clipboard.writeText(displayReport); alert('✓ הדוח הועתק'); }}>
                                             📋 העתק
                                         </button>
                                     </>
@@ -1048,7 +1064,7 @@
                             </div>
                         </div>
                         {!isEditing ? (
-                            <div className="report-preview">{generateReport()}</div>
+                            <div className="report-preview">{displayReport}</div>
                         ) : (
                             <textarea
                                 value={editedText}
