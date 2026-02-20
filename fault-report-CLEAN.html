@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>דיווח תקלה - פלוגה כ׳</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -27,7 +26,7 @@
 
             const send = async (e) => {
                 e.preventDefault();
-                if (form.id.length !== 7) return alert('מספר אישי חייב להיות 7 ספרות');
+                if (form.id.toString().length !== 7) return alert('מספר אישי חייב להיות 7 ספרות בדיוק');
                 setStatus('sending');
                 const data = { 
                     soldierName: form.name, 
@@ -43,7 +42,7 @@
                 setStatus('done');
             };
 
-            if (status === 'done') return <div className="card"><h2>✓ הדיווח נשלח!</h2><button className="btn" onClick={() => window.location.reload()}>דווח שוב</button></div>;
+            if (status === 'done') return <div className="card"><h2>✓ הדיווח נשלח בהצלחה!</h2><button className="btn" onClick={() => window.location.reload()}>דיווח נוסף</button></div>;
 
             return (
                 <div className="card">
@@ -59,7 +58,7 @@
                             </select>
                         </div>
                         {form.type === 'אחר' && (
-                            <div className="form-group"><label>פרט איזה ציוד:</label><input required placeholder="למשל: סוללה, אנטנה וכו'" onChange={e => setForm({...form, otherText: e.target.value})} /></div>
+                            <div className="form-group"><label>פרט איזה ציוד:</label><input required placeholder="פרט כאן מה הציוד" onChange={e => setForm({...form, otherText: e.target.value})} /></div>
                         )}
                         <div className="form-group"><label>תיאור התקלה</label><textarea required onChange={e => setForm({...form, desc: e.target.value})} /></div>
                         <button className="btn" disabled={status === 'sending'}>{status === 'sending' ? 'שולח...' : 'שלח דיווח'}</button>
