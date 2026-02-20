@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>חתימה על ציוד - פלוגה כ׳</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -29,7 +28,7 @@
 
             const send = async (e) => {
                 e.preventDefault();
-                if (form.id.length !== 7) return alert('מ"א חייב להיות 7 ספרות');
+                if (form.id.toString().length !== 7) return alert('מ"א חייב להיות 7 ספרות בדיוק');
                 setStatus('sending');
                 const data = {
                     soldierName: form.name, soldierId: form.id, unit: form.unit, role: form.role,
@@ -40,7 +39,7 @@
                 setStatus('done');
             };
 
-            if (status === 'done') return <div className="card"><h2>✓ החתימה בוצעה!</h2><button className="btn" onClick={() => window.location.reload()}>חתימה נוספת</button></div>;
+            if (status === 'done') return <div className="card"><h2>✓ החתימה בוצעה בהצלחה!</h2><button className="btn" onClick={() => window.location.reload()}>חתימה נוספת</button></div>;
 
             return (
                 <div className="card">
@@ -51,7 +50,7 @@
                         <div className="form-group"><label>מחלקה</label><select onChange={e=>setForm({...form, unit:e.target.value})}>{['מחלקה 1','מחלקה 2','מחלקה 3','חפק','חמל','מפלג'].map(u=><option key={u}>{u}</option>)}</select></div>
                         <div className="form-group"><label>תפקיד</label><select onChange={e=>setForm({...form, role:e.target.value})}>{['חייל','מ"כ','סמל','מ"מ','סמ"פ','מ"פ','אחר'].map(r=><option key={r}>{r}</option>)}</select></div>
                         
-                        <h4 style={{marginBottom:'10px', color:'#2c5f2d'}}>על מה חתמת?</h4>
+                        <h4 style={{marginBottom:'10px', color:'#2c5f2d'}}>סמן על מה חתמת:</h4>
                         <div className="check-group"><input type="checkbox" onChange={e=>setForm({...form, r624:e.target.checked})}/> <label>קשר 624</label></div>
                         <div className="check-group"><input type="checkbox" onChange={e=>setForm({...form, lio:e.target.checked})}/> <label>ליונט</label></div>
                         <div className="check-group"><input type="checkbox" onChange={e=>setForm({...form, charger:e.target.checked})}/> <label>מטען ליונט</label></div>
