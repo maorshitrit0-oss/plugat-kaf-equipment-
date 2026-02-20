@@ -242,19 +242,21 @@
                     <option value="מפלג">מפלג</option>
                 </select>
             </div>
-                <div class="form-group">
-                    <label for="role">תפקיד *</label>
-                    <select id="role" required>
-                        <option value="">בחר תפקיד</option>
-                        <option value="מפ">מפ</option>
-                        <option value="סמפ">סמפ</option>
-                        <option value="ממ">ממ</option>
-                        <option value="סמל">סמל</option>
-                        <option value="מכ">מכ</option>
-                        <option value="קשר">קשר</option>
-                        <option value="אחר">אחר</option>
-                    </select>
-                </div>
+            <div class="form-group">
+                <label for="role">תפקיד *</label>
+                <select id="role" required>
+                    <option value="">בחר תפקיד</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="customRoleGroup" style="display: none;">
+                <label for="customRole">תפקיד (פירוט)</label>
+                <input 
+                    type="text" 
+                    id="customRole" 
+                    placeholder="הכנס תפקיד"
+                />
+            </div>
 
 
             <div class="form-group">
@@ -308,6 +310,68 @@
 
     <script>
         
+        // Dynamic role options by unit
+        (function setupDynamicRoles() {
+            const unitSelect = document.getElementById('unit');
+            const roleSelect = document.getElementById('role');
+            const customRoleGroup = document.getElementById('customRoleGroup');
+            const customRoleInput = document.getElementById('customRole');
+
+            const updateRoleOptions = () => {
+                const unit = unitSelect.value;
+                let roles = [];
+
+                if (unit.startsWith('מחלקה')) {
+                    // מחלקות 1/2/3
+                    roles = ['ממ', 'סמל', 'מכ'];
+                } else if (unit === 'חפק') {
+                    roles = ['מפ', 'סמפ', 'קשר מפ', 'קשר סמפ', 'אחר'];
+                } else if (unit === 'חמל') {
+                    roles = ['חמליסט', 'קמבצ', 'אחר'];
+                } else if (unit === 'מפלג') {
+                    roles = ['רספ', 'סרספ', 'אחר'];
+                } else {
+                    roles = [];
+                }
+
+                roleSelect.innerHTML = '';
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = 'בחר תפקיד';
+                roleSelect.appendChild(placeholder);
+
+                roles.forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r;
+                    opt.textContent = r;
+                    roleSelect.appendChild(opt);
+                });
+
+                roleSelect.value = '';
+                customRoleInput.value = '';
+                customRoleInput.required = false;
+                customRoleGroup.style.display = 'none';
+            };
+
+            const handleRoleChange = () => {
+                if (roleSelect.value === 'אחר') {
+                    customRoleGroup.style.display = 'block';
+                    customRoleInput.required = true;
+                    customRoleInput.focus();
+                } else {
+                    customRoleGroup.style.display = 'none';
+                    customRoleInput.required = false;
+                    customRoleInput.value = '';
+                }
+            };
+
+            unitSelect.addEventListener('change', updateRoleOptions);
+            roleSelect.addEventListener('change', handleRoleChange);
+
+            // Initialize on load
+            updateRoleOptions();
+        })();
+
         // Show/hide other location field
         const equipmentTypeSelect = document.getElementById('equipmentType');
         const otherLocationField = document.getElementById('otherLocationField');
@@ -345,13 +409,33 @@
             submitBtn.innerHTML = '<span class="loading"></span> שולח דיווח...';
 
             try {
+                // Handle role (including custom "אחר")
+                const roleSelect = document.getElementById("role");
+                let roleValue = roleSelect.value;
+                if (!roleValue) {
+                    alertContainer.innerHTML = '<div class="alert alert-error">אנא בחר תפקיד</div>';
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '⚠️ שלח דיווח תקלה';
+                    return;
+                }
+                if (roleValue === 'אחר') {
+                    const customRole = document.getElementById('customRole').value.trim();
+                    if (!customRole) {
+                        alertContainer.innerHTML = '<div class="alert alert-error">אנא הזן את התפקיד בשדה תפקיד (פירוט)</div>';
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '⚠️ שלח דיווח תקלה';
+                        return;
+                    }
+                    roleValue = customRole;
+                }
+
                 // Create fault record
                 const fault = {
                     id: Date.now(),
                     soldierName,
                     soldierId,
                     unit,
-                    role: document.getElementById("role").value,
+                    role: roleValue,
                     equipmentType,
                     description,
                     status: 'pending',
