@@ -1192,8 +1192,9 @@
                 if (pendingFaults.length === 0) {
                     r += 'אין תקלות פתוחות\n';
                 } else {
-                    pendingFaults.forEach(f => {
-                        r += `- ${f.description || 'ללא תיאור'}\n`;
+                    pendingFaults.forEach((f, index) => {
+                        const desc = f.description || 'ללא תיאור';
+                        r += `${index + 1}. ${desc}\n`;
                     });
                 }
                 return r;
