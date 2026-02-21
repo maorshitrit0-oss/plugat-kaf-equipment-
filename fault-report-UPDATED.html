@@ -417,7 +417,6 @@
     submitBtn.innerHTML = '<span class="loading"></span> שולח לענן...';
 
     try {
-        // 1. יצירת אובייקט התקלה
         const fault = {
             id: Date.now(),
             soldierName,
@@ -431,39 +430,34 @@
             otherLocation: equipmentType === "אחר" ? otherLocationInput.value : ""
         };
 
-        // 2. שליחה ל-Firebase 
-        // אנחנו משתמשים ב-POST כדי להוסיף רשומה חדשה למערך התקלות
         const response = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/faults.json', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(fault)
         });
 
         if (!response.ok) throw new Error('Failed to save');
 
-        // Show success message
+        // שים לב: כאן החלפתי את המשתנה הבעייתי בטקסט קבוע או ב-SVG שלך
         document.getElementById('formContainer').innerHTML = `
             <div class="header">
-                <img src="${LOGO_SVG_VARIABLE_OR_BASE64}" class="logo" alt="Company Logo">
-                <div class="title" style="color: #2c5f2d;">פלוגה כ׳ גדוד 43</div>
+                <div class="title" style="color: #2c5f2d; margin-top: 10px;">פלוגה כ׳ גדוד 43</div>
             </div>
             <div class="success-message">
-                <div class="success-icon">✓</div>
-                <div class="success-title">הדיווח נשלח למפקד!</div>
+                <div class="success-icon" style="font-size: 4rem; color: #4caf50;">✓</div>
+                <div class="success-title" style="font-size: 1.5rem; font-weight: 700; color: #2c5f2d; margin-bottom: 1rem;">הדיווח נשלח בהצלחה!</div>
                 <p style="color: #666; margin-bottom: 1rem; font-size: 1.05rem;">
-                    ${soldierName}, התקלה נקלטה במערכת העננית.
+                    ${soldierName}, התקלה נרשמה ותטופל בהקדם.
                 </p>
-                <button class="btn" style="background: #4caf50;" onclick="location.reload()">
+                <button class="btn" style="background: #4caf50; width: 100%; padding: 1rem; color: white; border: none; border-radius: 8px; cursor: pointer;" onclick="location.reload()">
                     דווח תקלה נוספת
                 </button>
             </div>
         `;
 
     } catch (error) {
-        console.error('Error saving fault:', error);
-        alertContainer.innerHTML = '<div class="alert alert-error">שגיאה בחיבור לענן. וודא שיש לך אינטרנט ונסה שוב.</div>';
+        console.error('Detailed Error:', error); // זה יעזור לך לראות ב-Console בדיוק מה השתבש
+        alertContainer.innerHTML = '<div class="alert alert-error">שגיאה בתצוגת ההצלחה או בחיבור. בדוק קונסול.</div>';
         submitBtn.disabled = false;
         submitBtn.innerHTML = '⚠️ שלח דיווח תקלה';
     }
