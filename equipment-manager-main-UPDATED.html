@@ -497,39 +497,26 @@
                 };
             }, []);
 
-            const loadData = () => {
-                setCheckouts(storage.load('checkouts') || []);
+            const loadData = async () => {
+            // טעינת תקלות וציוד ספייר מהלוקאל (כמו קודם)
+            const loadedFaults = storage.load('faults');
+            const allFaults = Array.isArray(loadedFaults) ? loadedFaults : [];
+            setFaults(allFaults);
+            setSpareEquipment(storage.load('spareEquipment') || []);
 
-                // Load faults
-                const loadedFaults = storage.load('faults');
-                
-                // בדיקה האם הנתונים שהגיעו הם אכן מערך. אם לא - משתמשים במערך ריק.
-                const allFaults = Array.isArray(loadedFaults) ? loadedFaults : [];
-
-                const now = Date.now();
-                const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
-
-                const filteredFaults = allFaults.filter(f => {
-                    // Keep all pending faults
-                    if (f.status === 'pending') return true;
-
-                    // For resolved faults, check if resolved within 90 days
-                    if (f.status === 'resolved' && f.resolvedDate) {
-                        const resolvedTime = new Date(f.resolvedDate).getTime();
-                        return resolvedTime > ninetyDaysAgo;
-                    }
-
-                    return true;
-                });
-
-                // If any faults were filtered out, or if the original data was corrupted (not an array)
-                if (filteredFaults.length !== allFaults.length || !Array.isArray(loadedFaults)) {
-                    storage.save('faults', filteredFaults);
+            // טעינת חיילים מ-Firebase (כדי שכולם יראו את אותו המידע)
+            try {
+                const res = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/checkouts.json');
+                if (res.ok) {
+                    const data = await res.json();
+                    // Firebase מחזיר אובייקט או null, אנחנו צריכים להפוך למערך
+                    const checkoutsArray = data ? Object.values(data) : [];
+                    setCheckouts(checkoutsArray);
                 }
-
-                setFaults(filteredFaults);
-                setSpareEquipment(storage.load('spareEquipment') || []);
-            };
+            } catch (e) {
+                console.error('Failed to fetch checkouts from cloud:', e);
+            }
+        };
 
             const deleteFault = (faultId) => {
                 if (!confirm('האם למחוק תקלה זו?')) return;
@@ -563,12 +550,22 @@
                 }
             };
 
-            const updateCheckout = (id, field, value) => {
+            const updateCheckout = async (id, field, value) => {
+                // 1. עדכון מקומי ב-State
                 const newCheckouts = checkouts.map(c => 
                     c.id === id ? { ...c, [field]: value } : c
                 );
-                storage.save('checkouts', newCheckouts);
                 setCheckouts(newCheckouts);
+
+                // 2. עדכון ב-Firebase (שמירת כל המערך מחדש ב-PUT היא הדרך הקלה ביותר במבנה שלך)
+                try {
+                    await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/checkouts.json', {
+                        method: 'PUT',
+                        body: JSON.stringify(newCheckouts)
+                    });
+                } catch (e) {
+                    console.error('Failed to save update to cloud:', e);
+                }
             };
 
             const addSpareEquipment = (item) => {
