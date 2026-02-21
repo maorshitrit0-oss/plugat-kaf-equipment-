@@ -498,8 +498,23 @@
             }, []);
 
             const loadData = async () => {
-    // 1. טעינת ציוד ספייר מהלוקאל (נשאר כרגע מקומי)
-    setSpareEquipment(storage.load('spareEquipment') || []);
+    // 1. טעינת ציוד ספייר 
+    try {
+        const resSpare = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/spareEquipment.json');
+        if (resSpare.ok) {
+            const data = await resSpare.json();
+            let spareArray = [];
+            if (data) {
+                spareArray = Object.keys(data).map(key => ({
+                    ...data[key],
+                    firebaseId: key
+                }));
+            }
+            setSpareEquipment(spareArray);
+        }
+    } catch (e) {
+        console.error('Failed to fetch spare equipment:', e);
+    }
 
     // 2. טעינת חיילים מ-Firebase
     try {
@@ -548,49 +563,74 @@
     }
 };
 
-            const deleteFault = (faultId) => {
+            const deleteFault = async (faultId) => {
                 if (!confirm('האם למחוק תקלה זו?')) return;
-                const newFaults = faults.filter(f => f.id !== faultId);
-                storage.save('faults', newFaults);
-                setFaults(newFaults);
+                const fault = faults.find(f => f.id === faultId);
+                if (fault && fault.firebaseId) {
+                    try {
+                        await fetch(`https://plugat-kaf-default-rtdb.firebaseio.com/faults/${fault.firebaseId}.json`, {
+                            method: 'DELETE'
+                        });
+                    } catch (e) {
+                        console.error('Failed to delete fault from Firebase:', e);
+                    }
+                }
+                setFaults(faults.filter(f => f.id !== faultId));
             };
 
-            const updateFaultStatus = (faultId, newStatus) => {
-                const newFaults = faults.map(f => {
+            const updateFaultStatus = async (faultId, newStatus) => {
+                const fault = faults.find(f => f.id === faultId);
+                if (fault && fault.firebaseId) {
+                    const updates = { 
+                        status: newStatus,
+                        resolvedDate: newStatus === 'resolved' ? new Date().toISOString() : null
+                    };
+                    try {
+                        await fetch(`https://plugat-kaf-default-rtdb.firebaseio.com/faults/${fault.firebaseId}.json`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(updates)
+                        });
+                    } catch (e) {
+                        console.error('Failed to update fault status in Firebase:', e);
+                    }
+                }
+                setFaults(faults.map(f => {
                     if (f.id === faultId) {
                         return { 
                             ...f, 
                             status: newStatus,
-                            // אם הסטטוס הופך לטופל, מוסיפים תאריך סגירה
                             resolvedDate: newStatus === 'resolved' ? new Date().toISOString() : null 
                         };
                     }
                     return f;
-                });
-                
-                storage.save('faults', newFaults);
-                setFaults(newFaults);
+                }));
             };
 
-            const deleteCheckout = (id) => {
-                if (confirm('האם אתה בטוח שברצונך למחוק רישום זה?')) {
-                    const newCheckouts = checkouts.filter(c => c.id !== id);
-                    storage.save('checkouts', newCheckouts);
-                    setCheckouts(newCheckouts);
+            const deleteCheckout = async (id) => {
+                if (!confirm('האם אתה בטוח שברצונך למחוק רישום זה?')) return;
+                const newCheckouts = checkouts.filter(c => c.id !== id);
+                setCheckouts(newCheckouts);
+                try {
+                    await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/checkouts.json', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newCheckouts)
+                    });
+                } catch (e) {
+                    console.error('Failed to delete checkout from Firebase:', e);
                 }
             };
 
             const updateCheckout = async (id, field, value) => {
-                // 1. עדכון מקומי ב-State
-                const newCheckouts = checkouts.map(c => 
+                const newCheckouts = checkouts.map(c =>
                     c.id === id ? { ...c, [field]: value } : c
                 );
                 setCheckouts(newCheckouts);
-
-                // 2. עדכון ב-Firebase (שמירת כל המערך מחדש ב-PUT היא הדרך הקלה ביותר במבנה שלך)
                 try {
                     await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/checkouts.json', {
                         method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(newCheckouts)
                     });
                 } catch (e) {
@@ -598,28 +638,55 @@
                 }
             };
 
-            const addSpareEquipment = (item) => {
-                const newSpare = [...spareEquipment, { ...item, id: Date.now() }];
-                storage.save('spareEquipment', newSpare);
+            const addSpareEquipment = async (item) => {
+                const newItem = { ...item, id: Date.now() };
+                const newSpare = [...spareEquipment, newItem];
                 setSpareEquipment(newSpare);
-            };
-
-            const updateSpareEquipment = (id, field, value) => {
-                const newSpare = spareEquipment.map(s => 
-                    s.id === id ? { ...s, [field]: value } : s
-                );
-                storage.save('spareEquipment', newSpare);
-                setSpareEquipment(newSpare);
-            };
-
-            const deleteSpareEquipment = (id) => {
-                if (confirm('האם למחוק פריט זה?')) {
-                    const newSpare = spareEquipment.filter(s => s.id !== id);
-                    storage.save('spareEquipment', newSpare);
-                    setSpareEquipment(newSpare);
+                try {
+                    await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/spareEquipment.json', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newItem)
+                    });
+                } catch (e) {
+                    console.error('Failed to add spare equipment to Firebase:', e);
                 }
             };
 
+            const updateSpareEquipment = async (id, field, value) => {
+                const newSpare = spareEquipment.map(s =>
+                    s.id === id ? { ...s, [field]: value } : s
+                );
+                setSpareEquipment(newSpare);
+
+                const item = spareEquipment.find(s => s.id === id);
+                if (item && item.firebaseId) {
+                    try {
+                        await fetch(`https://plugat-kaf-default-rtdb.firebaseio.com/spareEquipment/${item.firebaseId}.json`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ [field]: value })
+                        });
+                    } catch (e) {
+                        console.error('Failed to update spare equipment in Firebase:', e);
+                    }
+                }
+            };
+
+            const deleteSpareEquipment = async (id) => {
+                if (!confirm('האם למחוק פריט זה?')) return;
+                const item = spareEquipment.find(s => s.id === id);
+                if (item && item.firebaseId) {
+                    try {
+                        await fetch(`https://plugat-kaf-default-rtdb.firebaseio.com/spareEquipment/${item.firebaseId}.json`, {
+                            method: 'DELETE'
+                        });
+                    } catch (e) {
+                        console.error('Failed to delete spare equipment from Firebase:', e);
+                    }
+                }
+                setSpareEquipment(spareEquipment.filter(s => s.id !== id));
+            };
             const handleLogin = async () => {
                 if (!passwordHash) return;
                 setAuthError('');
@@ -638,22 +705,23 @@
                 }
             };
 
-            const updateFaultDescription = (faultId, newDescription) => {
-                const newFaults = faults.map(f => 
+            const updateFaultDescription = async (faultId, newDescription) => {
+                const fault = faults.find(f => f.id === faultId);
+                if (fault && fault.firebaseId) {
+                    try {
+                        await fetch(`https://plugat-kaf-default-rtdb.firebaseio.com/faults/${fault.firebaseId}.json`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ description: newDescription })
+                        });
+                    } catch (e) {
+                        console.error('Failed to update fault description in Firebase:', e);
+                    }
+                }
+                setFaults(faults.map(f => 
                     f.id === faultId ? { ...f, description: newDescription } : f
-                );
-                storage.save('faults', newFaults);
-                setFaults(newFaults);
+                ));
             };
-
-            // Loading auth / password config
-            if (isAuthLoading || !passwordHash) {
-                return (
-                    <div className="container" style={{paddingTop: '4rem', textAlign: 'center'}}>
-                        <h2 className="section-title">טוען מערכת...</h2>
-                    </div>
-                );
-            }
 
             // Not authenticated yet - show password screen
             if (!isAuthenticated) {
