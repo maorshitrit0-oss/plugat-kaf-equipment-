@@ -1148,29 +1148,9 @@
             const [editedText, setEditedText] = useState('');
             const [isLoading, setIsLoading] = useState(true);
 
-            // טעינת הדוח השמור מ-Firebase
-            useEffect(() => {
-                const load = async () => {
-                    try {
-                        const res = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/dailyReport.json');
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (data && typeof data.content === 'string') {
-                                setSavedReport(data.content);
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Error loading report:', e);
-                    } finally {
-                        setIsLoading(false);
-                    }
-                };
-                load();
-            }, []);
-
-            const generateReport = () => {
+            // 1. פונקציה ליצירת דוח מנתוני אמת
+            const generateLiveReport = () => {
                 let r = 'דוח צ\n*פלוגה כ׳*\n\n';
-
                 r += 'חפק:\nמשואה: [מספר סידורי]\nכרטיס: [מספר סידורי]\nמשיב מיקום: [מספר סידורי]\n\n';
                 r += 'סיור:\nמשואה: קיים במשקשיה\nכרטיס: קיים במשקשיה\nמשיב מיקום: קיים במשקשיה\n\n';
                 r += 'חמל:\nכרטיס מחשב משואה: [מספר סידורי]\n\n';
@@ -1209,8 +1189,28 @@
                 return r;
             };
 
-            // יצירת דוח בזמן אמת בכל טעינה/שינוי נתונים
-            const liveReport = generateReport();
+            // 2. טעינת הדוח מהשרת
+            useEffect(() => {
+                const load = async () => {
+                    try {
+                        const res = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/dailyReport.json');
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && data.content) {
+                                setSavedReport(data.content);
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error loading report:', e);
+                    } finally {
+                        setIsLoading(false);
+                    }
+                };
+                load();
+            }, []);
+
+            // 3. קביעת איזה דוח להציג: השמור מהשרת, ואם אין - את החי
+            const displayContent = savedReport !== null ? savedReport : generateLiveReport();
 
             const save = async () => {
                 try {
@@ -1224,9 +1224,15 @@
                     });
                     setSavedReport(editedText);
                     setIsEditing(false);
-                    alert('✓ הדוח נשמר בשרת');
+                    alert('✓ הדוח נשמר בשרת ויוצג מעכשיו');
                 } catch (e) {
                     alert('❌ שגיאה בשמירה');
+                }
+            };
+
+            const handleResetToLive = () => {
+                if (confirm('האם לרענן את הדוח לפי נתוני האמת מהשטח? (שינויים ידניים יימחקו)')) {
+                    setSavedReport(null); // זה יגרום למערכת להציג את ה-Live
                 }
             };
 
@@ -1235,16 +1241,21 @@
             return (
                 <div>
                     <div className="section">
-                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:'1rem'}}>
-                            <h2 className="section-title">דוח יומי (זמן אמת)</h2>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:'1rem', alignItems:'center'}}>
+                            <h2 className="section-title" style={{margin:0}}>
+                                {savedReport ? 'דוח שמור מהשרת' : 'דוח זמן אמת (חדש)'}
+                            </h2>
                             <div style={{display:'flex',gap:'0.5rem'}}>
                                 {!isEditing ? (
                                     <>
-                                        <button className="btn" onClick={() => { setEditedText(liveReport); setIsEditing(true); }}>
-                                            ✏️ עריכה ידנית
+                                        <button className="btn" onClick={() => { setEditedText(displayContent); setIsEditing(true); }}>
+                                            ✏️ עריכה
                                         </button>
-                                        <button className="btn" onClick={() => { navigator.clipboard.writeText(liveReport); alert('✓ דוח זמן אמת הועתק'); }}>
-                                            📋 העתק דוח חי
+                                        <button className="btn" onClick={handleResetToLive} style={{background: '#666'}}>
+                                            🔄 רענן לנתוני אמת
+                                        </button>
+                                        <button className="btn" onClick={() => { navigator.clipboard.writeText(displayContent); alert('✓ הדוח הועתק'); }}>
+                                            📋 העתק
                                         </button>
                                     </>
                                 ) : (
@@ -1256,20 +1267,13 @@
                             </div>
                         </div>
 
-                        {/* הצגת הערה אם יש דוח שמור בשרת ששונה מהדוח החי */}
-                        {!isEditing && savedReport && savedReport !== liveReport && (
-                            <div className="alert alert-success" style={{fontSize:'0.8rem', padding:'0.5rem', marginBottom:'1rem'}}>
-                                ℹ️ שים לב: קיים דוח ערוך בשרת, אך כרגע מוצגים נתוני אמת מהשטח.
-                            </div>
-                        )}
-
                         {!isEditing ? (
-                            <div className="report-preview">{liveReport}</div>
+                            <div className="report-preview">{displayContent}</div>
                         ) : (
                             <textarea
                                 value={editedText}
                                 onChange={(e) => setEditedText(e.target.value)}
-                                style={{width:'100%',minHeight:'500px',padding:'1rem',fontFamily:'monospace',border:'2px solid #2c5f2d',borderRadius:'4px',direction:'rtl'}}
+                                style={{width:'100%',minHeight:'500px',padding:'1rem',fontFamily:'monospace',fontSize:'1rem',border:'2px solid #2c5f2d',borderRadius:'4px',direction:'rtl'}}
                             />
                         )}
                     </div>
