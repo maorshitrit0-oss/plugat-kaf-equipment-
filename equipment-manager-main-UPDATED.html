@@ -3,34 +3,398 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ניהול ציוד פלוגה כ' - ענן</title>
+    <title>מערכת ניהול ציוד - פלוגה כ׳ גדוד 43</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Assistant:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
-        /* עיצוב כללי (זהה לשלך עם שיפורים קלים) */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Assistant', sans-serif; background: #f5f5f5; color: #333; }
-        .header { background: white; padding: 1rem 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-bottom: 3px solid #2c5f2d; display: flex; align-items: center; gap: 2rem; }
-        .company-logo { width: 60px; height: 60px; object-fit: contain; }
-        .header-title { font-family: 'Heebo', sans-serif; font-size: 1.5rem; font-weight: 700; color: #2c5f2d; }
-        .nav { display: flex; gap: 0.5rem; margin-right: auto; flex-wrap: wrap; }
-        .nav-btn { background: white; border: 2px solid #ddd; padding: 0.6rem 1.2rem; cursor: pointer; font-weight: 600; border-radius: 6px; transition: 0.2s; }
-        .nav-btn.active { background: #2c5f2d; color: white; border-color: #2c5f2d; }
-        .container { max-width: 1400px; margin: 2rem auto; padding: 0 2rem; }
-        .section { background: white; border-radius: 8px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #e0e0e0; }
-        .section-title { font-family: 'Heebo', sans-serif; font-size: 1.3rem; font-weight: 700; color: #2c5f2d; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid #2c5f2d; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-        thead { background: #2c5f2d; color: white; }
-        th, td { padding: 0.8rem; border: 1px solid #ddd; text-align: center; }
-        .btn { background: #2c5f2d; color: white; border: none; padding: 0.7rem 1.5rem; border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-        .btn-danger { background: #d32f2f; }
-        .btn-small { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
-        .report-preview { background: #f5f5f5; padding: 1.5rem; border-radius: 6px; font-family: 'Courier New', monospace; white-space: pre-wrap; border: 1px solid #ddd; }
-        .fault-item { background: #fff3e0; border-right: 4px solid #ff9800; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; text-align: right; }
-        .fault-resolved { background: #e8f5e9; border-right-color: #4caf50; }
-        .editable-cell:hover { background: #fffde7; cursor: pointer; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Assistant', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-bottom: 3px solid #2c5f2d;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .company-logo {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+
+        .header-title {
+            font-family: 'Heebo', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2c5f2d;
+        }
+
+        .header-subtitle {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .nav {
+            display: flex;
+            gap: 0.5rem;
+            margin-right: auto;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            background: white;
+            border: 2px solid #ddd;
+            color: #333;
+            padding: 0.6rem 1.2rem;
+            cursor: pointer;
+            font-family: 'Assistant', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #f8f8f8;
+            border-color: #2c5f2d;
+        }
+
+        .nav-btn.active {
+            background: #2c5f2d;
+            color: white;
+            border-color: #2c5f2d;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid #e0e0e0;
+        }
+
+        .section-title {
+            font-family: 'Heebo', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2c5f2d;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #2c5f2d;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        thead {
+            background: #2c5f2d;
+            color: white;
+        }
+
+        th {
+            padding: 0.8rem;
+            text-align: center;
+            font-weight: 600;
+            border: 1px solid #ddd;
+        }
+
+        td {
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+
+        tbody tr:hover {
+            background: #f0f7f0;
+        }
+
+        .unit-header {
+            background: #2c5f2d;
+            color: white;
+            font-weight: 700;
+            text-align: right;
+            padding: 1rem;
+        }
+
+        .btn {
+            background: #2c5f2d;
+            color: white;
+            border: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 6px;
+            font-family: 'Assistant', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #1e4620;
+        }
+
+        .btn-secondary {
+            background: #666;
+        }
+
+        .btn-danger {
+            background: #d32f2f;
+        }
+
+        .btn-small {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+        }
+
+        .link-box {
+            background: #f5f5f5;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            border-right: 4px solid #2c5f2d;
+        }
+
+        .link-header {
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #2c5f2d;
+        }
+
+        .link-url {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .link-url input {
+            flex: 1;
+            padding: 0.6rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-family: 'Heebo', sans-serif;
+            font-size: 2rem;
+            font-weight: 900;
+            color: #2c5f2d;
+        }
+
+        .report-preview {
+            background: #f5f5f5;
+            padding: 1.5rem;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            border: 1px solid #ddd;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .alert-success {
+            background: #e8f5e9;
+            border-right: 4px solid #4caf50;
+            color: #2e7d32;
+        }
+
+        .alert-error {
+            background: #ffebee;
+            border-right: 4px solid #f44336;
+            color: #c62828;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2c5f2d;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.3rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 0.6rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Assistant', sans-serif;
+            font-size: 0.95rem;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .fault-item {
+            background: #fff3e0;
+            border-right: 4px solid #ff9800;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+
+        .fault-resolved {
+            background: #e8f5e9;
+            border-right-color: #4caf50;
+        }
+
+        .editable-cell {
+            cursor: pointer;
+            min-width: 80px;
+        }
+
+        .editable-cell:hover {
+            background: #fffde7;
+        }
+
+        .editable-cell input {
+            width: 100%;
+            padding: 0.3rem;
+            border: 2px solid #2c5f2d;
+            border-radius: 3px;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                padding: 1rem;
+            }
+
+            .nav {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .container {
+                padding: 0 1rem;
+            }
+
+            table {
+                font-size: 0.85rem;
+            }
+
+            th, td {
+                padding: 0.5rem 0.3rem;
+            }
+        }
     </style>
 </head>
 <body>
