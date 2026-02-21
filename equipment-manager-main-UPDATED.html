@@ -1139,7 +1139,7 @@
             const [editedText, setEditedText] = useState('');
             const [isLoading, setIsLoading] = useState(true);
 
-            // Load saved report from Firebase ONCE (only if it already includes the new faults section)
+            // טעינת הדוח השמור מ-Firebase
             useEffect(() => {
                 const load = async () => {
                     try {
@@ -1147,10 +1147,7 @@
                         if (res.ok) {
                             const data = await res.json();
                             if (data && typeof data.content === 'string') {
-                                const hasFaultsSection = data.content.includes('תקלות פתוחות');
-                                if (hasFaultsSection) {
-                                    setSavedReport(data.content);
-                                }
+                                setSavedReport(data.content);
                             }
                         }
                     } catch (e) {
@@ -1165,76 +1162,45 @@
             const generateReport = () => {
                 let r = 'דוח צ\n*פלוגה כ׳*\n\n';
 
-                r += 'חפק:\n';
-                r += 'משואה: [מספר סידורי]\n';
-                r += 'כרטיס: [מספר סידורי]\n';
-                r += 'משיב מיקום: [מספר סידורי]\n\n';
+                r += 'חפק:\nמשואה: [מספר סידורי]\nכרטיס: [מספר סידורי]\nמשיב מיקום: [מספר סידורי]\n\n';
+                r += 'סיור:\nמשואה: קיים במשקשיה\nכרטיס: קיים במשקשיה\nמשיב מיקום: קיים במשקשיה\n\n';
+                r += 'חמל:\nכרטיס מחשב משואה: [מספר סידורי]\n\n';
+                r += 'משרד מ״פ:\nכרטיס מחשב משואה: [מספר סידורי]\nכרטיס מחשב מנהלתי: [מספר סידורי]\n\n';
+                r += 'חדן:\nמשיב מיקום: [מספר סידורי]\nכרטיס: [מספר סידורי]\n\n';
 
-                r += 'סיור:\n';
-                r += 'משואה: קיים במשקשיה\n';
-                r += 'כרטיס: קיים במשקשיה\n';
-                r += 'משיב מיקום: קיים במשקשיה\n\n';
-
-                r += 'חמל:\n';
-                r += 'כרטיס מחשב משואה: [מספר סידורי]\n\n';
-
-                r += 'משרד מ״פ:\n';
-                r += 'כרטיס מחשב משואה: [מספר סידורי]\n';
-                r += 'כרטיס מחשב מנהלתי: [מספר סידורי]\n\n';
-
-                r += 'חדן:\n';
-                r += 'משיב מיקום: [מספר סידורי]\n';
-                r += 'כרטיס: [מספר סידורי]\n\n';
-
-                // ליונטים
                 r += 'ליונטים:\n';
-                const lionets = checkouts.filter(c => c.unit === 'חפק' || c.unit === 'חמל');
-                lionets.forEach(s => {
+                checkouts.filter(c => (c.unit === 'חפק' || c.unit === 'חמל') && c.equipment?.lionet?.serialNumber).forEach(s => {
                     const last4 = (s.soldierId || '????').slice(-4);
-                    if (s.role === 'מפ') r += `מפ ${last4}\n`;
-                    else if (s.role === 'סמפ') r += `סמפ ${last4}\n`;
-                    else r += `${last4}\n`;
+                    r += `${s.role || 'חייל'} ${last4}\n`;
                 });
                 r += '\n';
 
-                // מחלקות
-                for (let i = 1; i <= 3; i++) {
-                    const squad = checkouts.filter(c => c.unit === `מחלקה ${i}`);
-                    if (squad.length === 0) continue;
-                    r += `מחלקה ${i}:\n`;
-                    squad.forEach(s => {
-                        const last4 = (s.soldierId || '????').slice(-4);
-                        if (s.role === 'ממ') r += `${last4} מ״מ\n`;
-                        else r += `${last4}\n`;
-                    });
-                    r += '\n';
-                }
+                UNITS.filter(u => u.includes('מחלקה')).forEach(unitName => {
+                    const squad = checkouts.filter(c => c.unit === unitName);
+                    if (squad.length > 0) {
+                        r += `${unitName}:\n`;
+                        squad.forEach(s => {
+                            const last4 = (s.soldierId || '????').slice(-4);
+                            r += `${last4}${s.role === 'ממ' ? ' מ״מ' : ''}\n`;
+                        });
+                        r += '\n';
+                    }
+                });
 
-                // חמל
-                const hamal = checkouts.filter(c => c.unit === 'חמל' && c.role === 'מפ');
-                if (hamal.length > 0) {
-                    r += 'חמל:\n';
-                    hamal.forEach(s => {
-                        const last4 = (s.soldierId || '????').slice(-4);
-                        r += `חמל ${last4}\n`;
-                    });
-                    r += '\n';
-                }
-
-                // תקלות
                 const pendingFaults = faults.filter(f => f.status === 'pending');
                 r += 'תקלות פתוחות:\n';
                 if (pendingFaults.length === 0) {
                     r += 'אין תקלות פתוחות\n';
                 } else {
                     pendingFaults.forEach(f => {
-                        const desc = f.description || '';
-                        r += `- ${desc || 'ללא תיאור'}\n`;
+                        r += `- ${f.description || 'ללא תיאור'}\n`;
                     });
                 }
-
                 return r;
             };
+
+            // יצירת דוח בזמן אמת בכל טעינה/שינוי נתונים
+            const liveReport = generateReport();
 
             const save = async () => {
                 try {
@@ -1248,53 +1214,52 @@
                     });
                     setSavedReport(editedText);
                     setIsEditing(false);
-                    alert('✓ הדוח נשמר');
+                    alert('✓ הדוח נשמר בשרת');
                 } catch (e) {
                     alert('❌ שגיאה בשמירה');
                 }
             };
 
-            // Show the saved report if exists, otherwise generate
-            const displayReport = savedReport !== null ? savedReport : generateReport();
-
-            if (isLoading) {
-                return (
-                    <div className="section">
-                        <p style={{textAlign:'center',padding:'2rem'}}>טוען דוח...</p>
-                    </div>
-                );
-            }
+            if (isLoading) return <div className="section"><p style={{textAlign:'center',padding:'2rem'}}>טוען נתונים...</p></div>;
 
             return (
                 <div>
                     <div className="section">
                         <div style={{display:'flex',justifyContent:'space-between',marginBottom:'1rem'}}>
-                            <h2 className="section-title">דוח יומי</h2>
+                            <h2 className="section-title">דוח יומי (זמן אמת)</h2>
                             <div style={{display:'flex',gap:'0.5rem'}}>
                                 {!isEditing ? (
                                     <>
-                                        <button className="btn" onClick={() => { setEditedText(displayReport); setIsEditing(true); }}>
-                                            ✏️ ערוך
+                                        <button className="btn" onClick={() => { setEditedText(liveReport); setIsEditing(true); }}>
+                                            ✏️ עריכה ידנית
                                         </button>
-                                        <button className="btn" onClick={() => { navigator.clipboard.writeText(displayReport); alert('✓ הדוח הועתק'); }}>
-                                            📋 העתק
+                                        <button className="btn" onClick={() => { navigator.clipboard.writeText(liveReport); alert('✓ דוח זמן אמת הועתק'); }}>
+                                            📋 העתק דוח חי
                                         </button>
                                     </>
                                 ) : (
                                     <>
-                                        <button className="btn" onClick={save} style={{background:'#4caf50'}}>✓ שמור</button>
+                                        <button className="btn" onClick={save} style={{background:'#4caf50'}}>✓ שמור לשרת</button>
                                         <button className="btn" onClick={() => setIsEditing(false)} style={{background:'#999'}}>✕ ביטול</button>
                                     </>
                                 )}
                             </div>
                         </div>
+
+                        {/* הצגת הערה אם יש דוח שמור בשרת ששונה מהדוח החי */}
+                        {!isEditing && savedReport && savedReport !== liveReport && (
+                            <div className="alert alert-success" style={{fontSize:'0.8rem', padding:'0.5rem', marginBottom:'1rem'}}>
+                                ℹ️ שים לב: קיים דוח ערוך בשרת, אך כרגע מוצגים נתוני אמת מהשטח.
+                            </div>
+                        )}
+
                         {!isEditing ? (
-                            <div className="report-preview">{displayReport}</div>
+                            <div className="report-preview">{liveReport}</div>
                         ) : (
                             <textarea
                                 value={editedText}
                                 onChange={(e) => setEditedText(e.target.value)}
-                                style={{width:'100%',minHeight:'500px',padding:'1rem',fontFamily:'monospace',fontSize:'0.95rem',border:'2px solid #2c5f2d',borderRadius:'4px',direction:'rtl'}}
+                                style={{width:'100%',minHeight:'500px',padding:'1rem',fontFamily:'monospace',border:'2px solid #2c5f2d',borderRadius:'4px',direction:'rtl'}}
                             />
                         )}
                     </div>
