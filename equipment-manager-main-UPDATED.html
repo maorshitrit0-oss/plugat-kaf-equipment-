@@ -395,108 +395,7 @@
                 padding: 0.5rem 0.3rem;
             }
         }
-    
-        /* Responsive Design for Mobile */
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                padding: 1rem;
-                gap: 1rem;
-            }
-
-            .logo-container {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .company-logo {
-                width: 50px;
-                height: 50px;
-            }
-
-            .header-title {
-                font-size: 1.2rem;
-            }
-
-            .nav {
-                flex-wrap: wrap;
-                justify-content: center;
-                width: 100%;
-            }
-
-            .nav-btn {
-                font-size: 0.85rem;
-                padding: 0.5rem 0.8rem;
-            }
-
-            .container {
-                padding: 0 1rem;
-                margin: 1rem auto;
-            }
-
-            .section {
-                padding: 1rem;
-                margin-bottom: 1rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .table-container {
-                overflow-x: auto;
-            }
-
-            table {
-                font-size: 0.85rem;
-            }
-
-            th, td {
-                padding: 0.5rem;
-            }
-
-            .btn {
-                font-size: 0.9rem;
-                padding: 0.5rem 1rem;
-            }
-
-            .form-group input,
-            .form-group select,
-            .form-group textarea {
-                font-size: 0.95rem;
-            }
-
-            .report-preview {
-                font-size: 0.85rem;
-                padding: 1rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .header-title {
-                font-size: 1rem;
-            }
-
-            .nav-btn {
-                font-size: 0.8rem;
-                padding: 0.4rem 0.6rem;
-            }
-
-            .section-title {
-                font-size: 1.2rem;
-            }
-
-            table {
-                font-size: 0.75rem;
-            }
-
-            .btn {
-                font-size: 0.85rem;
-                padding: 0.4rem 0.8rem;
-            }
-        }
-
-</style>
+    </style>
 </head>
 <body>
     <div id="root"></div>
@@ -508,40 +407,27 @@
 
         const UNITS = ['מחלקה 1', 'מחלקה 2', 'מחלקה 3', 'חפק', 'חמל', 'מפלג'];
 
+        // Hash password with SHA-256 (stored in Firebase as hash only)
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const digest = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(digest));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
         const storage = {
-            save: async (key, data) => {
-                try {
-                    const response = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/' + key + '.json', {
-                        method: 'PUT',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(data)
-                    });
-                    return response.ok;
-                } catch (error) {
-                    console.error('Firebase save error:', error);
-                    return false;
-                }
-            },
-            load: async (key) => {
-                try {
-                    const response = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/' + key + '.json');
-                    if (!response.ok) return null;
-                    const data = await response.json();
-                    
-                    // Convert Firebase object to array
-                    if (data && typeof data === 'object' && !Array.isArray(data)) {
-                        return Object.values(data);
-                    }
-                    return data || null;
-                } catch (error) {
-                    console.error('Firebase load error:', error);
-                    return null;
-                }
+            save: (key, data) => localStorage.setItem(key, JSON.stringify(data)),
+            load: (key) => {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : null;
             }
         };
 
         const initData = () => {
-            // No longer needed - loadData handles initialization
+            if (!storage.load('checkouts')) storage.save('checkouts', []);
+            if (!storage.load('faults')) storage.save('faults', []);
+            if (!storage.load('spareEquipment')) storage.save('spareEquipment', []);
         };
 
         function App() {
@@ -550,53 +436,104 @@
             const [faults, setFaults] = useState([]);
             const [spareEquipment, setSpareEquipment] = useState([]);
 
+            // auth state
+            const [passwordHash, setPasswordHash] = useState(null);
+            const [isAuthLoading, setIsAuthLoading] = useState(true);
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [passwordInput, setPasswordInput] = useState('');
+            const [authError, setAuthError] = useState('');
+
+            const loadPasswordConfig = async () => {
+                const url = 'https://plugat-kaf-default-rtdb.firebaseio.com/passwordHash.json';
+                try {
+                    const res = await fetch(url);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (typeof data === 'string' && data.length > 0) {
+                            setPasswordHash(data);
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error loading password from Firebase:', e);
+                }
+
+                // If we got here, initialize default password hash (0209) in Firebase
+                try {
+                    const defaultHash = await hashPassword('0209');
+                    try {
+                        await fetch(url, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(defaultHash)
+                        });
+                    } catch (e) {
+                        console.error('Error saving default password hash to Firebase:', e);
+                    }
+                    setPasswordHash(defaultHash);
+                } catch (e) {
+                    console.error('Error hashing default password:', e);
+                }
+            };
+
             useEffect(() => {
-                // initData();
-                loadData();
-                
+                let interval = null;
                 const handleStorageChange = () => loadData();
-                window.addEventListener('storage', handleStorageChange);
-                const interval = setInterval(loadData, 2000);
-                
+
+                const initAll = async () => {
+                    await loadPasswordConfig();
+                    initData();
+                    loadData();
+                    window.addEventListener('storage', handleStorageChange);
+                    interval = setInterval(loadData, 2000);
+                    setIsAuthLoading(false);
+                };
+
+                initAll();
+
                 return () => {
                     window.removeEventListener('storage', handleStorageChange);
-                    clearInterval(interval);
+                    if (interval) clearInterval(interval);
                 };
             }, []);
 
-            // Clear saved report when faults change
-            useEffect(() => {
-                const clearSavedReport = async () => {
-                    try {
-                        await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/dailyReport.json', {
-                            method: 'DELETE'
-                        });
-                    } catch (e) {
-                        console.error('Error clearing saved report:', e);
-                    }
-                };
-                
-                // Only clear if faults array has been loaded (not empty initial state)
-                if (faults.length > 0 || sessionStorage.getItem('faultsLoaded')) {
-                    clearSavedReport();
-                    sessionStorage.setItem('faultsLoaded', 'true');
-                }
-            }, [faults]);
-
             const loadData = () => {
-                const checkoutsData = storage.load('checkouts');
-                const faultsData = storage.load('faults');
-                const spareData = storage.load('spareEquipment');
+                setCheckouts(storage.load('checkouts') || []);
+
+                // Load faults
+                const loadedFaults = storage.load('faults');
                 
-                setCheckouts(checkoutsData || []);
-                setFaults(faultsData || []);
-                setSpareEquipment(spareData || []);
+                // בדיקה האם הנתונים שהגיעו הם אכן מערך. אם לא - משתמשים במערך ריק.
+                const allFaults = Array.isArray(loadedFaults) ? loadedFaults : [];
+
+                const now = Date.now();
+                const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
+
+                const filteredFaults = allFaults.filter(f => {
+                    // Keep all pending faults
+                    if (f.status === 'pending') return true;
+
+                    // For resolved faults, check if resolved within 90 days
+                    if (f.status === 'resolved' && f.resolvedDate) {
+                        const resolvedTime = new Date(f.resolvedDate).getTime();
+                        return resolvedTime > ninetyDaysAgo;
+                    }
+
+                    return true;
+                });
+
+                // If any faults were filtered out, or if the original data was corrupted (not an array)
+                if (filteredFaults.length !== allFaults.length || !Array.isArray(loadedFaults)) {
+                    storage.save('faults', filteredFaults);
+                }
+
+                setFaults(filteredFaults);
+                setSpareEquipment(storage.load('spareEquipment') || []);
             };
 
-            const updateFaultStatus = (faultId, status) => {
-                const newFaults = faults.map(f => 
-                    f.id === faultId ? { ...f, status } : f
-                );
+            const deleteFault = (faultId) => {
+                if (!confirm('האם למחוק תקלה זו?')) return;
+                const newFaults = faults.filter(f => f.id !== faultId);
                 storage.save('faults', newFaults);
                 setFaults(newFaults);
             };
@@ -639,6 +576,61 @@
                 }
             };
 
+            const handleLogin = async () => {
+                if (!passwordHash) return;
+                setAuthError('');
+                try {
+                    const enteredHash = await hashPassword(passwordInput);
+                    if (enteredHash === passwordHash) {
+                        setIsAuthenticated(true);
+                        setPasswordInput('');
+                        setAuthError('');
+                    } else {
+                        setAuthError('סיסמה שגויה');
+                    }
+                } catch (e) {
+                    console.error('Error checking password:', e);
+                    setAuthError('שגיאה באימות הסיסמה');
+                }
+            };
+
+            // Loading auth / password config
+            if (isAuthLoading || !passwordHash) {
+                return (
+                    <div className="container" style={{paddingTop: '4rem', textAlign: 'center'}}>
+                        <h2 className="section-title">טוען מערכת...</h2>
+                    </div>
+                );
+            }
+
+            // Not authenticated yet - show password screen
+            if (!isAuthenticated) {
+                return (
+                    <div className="container" style={{paddingTop: '4rem', maxWidth: '400px', margin: '0 auto'}}>
+                        <div className="section">
+                            <h2 className="section-title" style={{textAlign: 'center'}}>כניסה למערכת</h2>
+                            <p style={{textAlign: 'center', marginBottom: '1rem'}}>הכנס סיסמה כדי להמשיך</p>
+                            <input
+                                type="password"
+                                value={passwordInput}
+                                onChange={(e) => setPasswordInput(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
+                                style={{width: '100%', padding: '0.75rem', marginBottom: '0.75rem', fontSize: '1rem', direction: 'ltr'}}
+                            />
+                            {authError && (
+                                <div style={{color: '#d32f2f', marginBottom: '0.5rem', textAlign: 'center'}}>
+                                    {authError}
+                                </div>
+                            )}
+                            <button className="btn" style={{width: '100%'}} onClick={handleLogin}>
+                                התחבר
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Authenticated - show main app
             return (
                 <div>
                     <header className="header">
@@ -705,55 +697,96 @@
                             <ReportView checkouts={checkouts} faults={faults} />
                         )}
                         {currentView === 'faults' && (
-                            <FaultsView faults={faults} updateFaultStatus={updateFaultStatus} />
+                            <FaultsView 
+                                faults={faults} 
+                                updateFaultStatus={updateFaultStatus} 
+                                deleteFault={deleteFault}
+                            />
                         )}
                     </main>
                 </div>
             );
         }
 
-        function DashboardView({ checkouts, faults, deleteCheckout, updateCheckout }) {
-            const [editingCell, setEditingCell] = useState(null);
+        function EditableCell({ value, onChange, type = 'text' }) {
+            const [isEditing, setIsEditing] = useState(false);
+            const [tempValue, setTempValue] = useState(value);
 
-            const totalSoldiers = checkouts.length;
-            const pendingFaults = faults.filter(f => f.status === 'pending').length;
+            useEffect(() => {
+                setTempValue(value);
+            }, [value]);
 
-            const EditableCell = ({ value, onChange, type = 'text' }) => {
-                const [isEditing, setIsEditing] = useState(false);
-                const [tempValue, setTempValue] = useState(value);
-
-                if (!isEditing) {
-                    return (
-                        <td 
-                            className="editable-cell"
-                            onClick={() => setIsEditing(true)}
-                        >
-                            {value || '-'}
-                        </td>
-                    );
-                }
-
+            if (!isEditing) {
                 return (
-                    <td>
-                        <input
-                            type={type}
-                            value={tempValue}
-                            onChange={(e) => setTempValue(e.target.value)}
-                            onBlur={() => {
-                                onChange(tempValue);
-                                setIsEditing(false);
-                            }}
-                            onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                    onChange(tempValue);
-                                    setIsEditing(false);
-                                }
-                            }}
-                            autoFocus
-                        />
+                    <td 
+                        className="editable-cell"
+                        onClick={() => {
+                            setTempValue(value);
+                            setIsEditing(true);
+                        }}
+                        style={{cursor: 'pointer'}}
+                    >
+                        {value || '-'}
                     </td>
                 );
-            };
+            }
+
+            return (
+                <td>
+                    <input
+                        type={type}
+                        value={tempValue}
+                        onChange={(e) => setTempValue(e.target.value)}
+                        onBlur={() => {
+                            if (tempValue !== value) {
+                                onChange(tempValue);
+                            }
+                            setIsEditing(false);
+                        }}
+                        onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                                if (tempValue !== value) {
+                                    onChange(tempValue);
+                                }
+                                setIsEditing(false);
+                            }
+                        }}
+                        autoFocus
+                        style={{
+                            width: '100%',
+                            padding: '0.25rem',
+                            border: '2px solid #2c5f2d',
+                            borderRadius: '4px'
+                        }}
+                    />
+                </td>
+            );
+        }
+
+        function BoolCell({ value, onChange }) {
+            const isTrue = !!value;
+            const display = isTrue ? '✓' : '✗';
+            const color = isTrue ? '#2e7d32' : '#d32f2f';
+
+            return (
+                <td 
+                    className="editable-cell"
+                    onClick={() => onChange(!isTrue)}
+                    style={{
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        fontWeight: 'bold',
+                        color
+                    }}
+                >
+                    {display}
+                </td>
+            );
+        }
+
+        function DashboardView({ checkouts, faults, deleteCheckout, updateCheckout }) {
+            const totalSoldiers = checkouts.length;
+            const pendingFaults = faults.filter(f => f.status === 'pending').length;
 
             return (
                 <div>
@@ -788,6 +821,7 @@
                                                 <th>מ.א</th>
                                                 <th>624</th>
                                                 <th>ליונט</th>
+                                                <th>מטען</th>
                                                 <th>מעד</th>
                                                 <th>פעולות</th>
                                             </tr>
@@ -807,16 +841,43 @@
                                                         value={soldier.soldierId}
                                                         onChange={(val) => updateCheckout(soldier.id, 'soldierId', val)}
                                                     />
-                                                    <td>
-                                                        {soldier.equipment?.['radio624'] ? '✓' : '-'}
-                                                    </td>
-                                                    <td>
-                                                        {soldier.equipment?.lionet?.serialNumber || 
-                                                         (soldier.equipment?.lionet ? '✓' : '-')}
-                                                    </td>
-                                                    <td>
-                                                        {soldier.equipment?.vest ? '✓' : '-'}
-                                                    </td>
+                                                    <BoolCell
+                                                        value={soldier.equipment?.['radio624']}
+                                                        onChange={(val) => {
+                                                            const newEquipment = {
+                                                                ...(soldier.equipment || {}),
+                                                                radio624: val
+                                                            };
+                                                            updateCheckout(soldier.id, 'equipment', newEquipment);
+                                                        }}
+                                                    />
+                                                    <EditableCell
+                                                        value={soldier.equipment?.lionet?.serialNumber || ''}
+                                                        onChange={(val) => {
+                                                            const newEquipment = {...(soldier.equipment || {}), lionet: val ? {serialNumber: val} : null};
+                                                            updateCheckout(soldier.id, 'equipment', newEquipment);
+                                                        }}
+                                                    />
+                                                    <BoolCell
+                                                        value={soldier.equipment?.charger}
+                                                        onChange={(val) => {
+                                                            const newEquipment = {
+                                                                ...(soldier.equipment || {}),
+                                                                charger: val
+                                                            };
+                                                            updateCheckout(soldier.id, 'equipment', newEquipment);
+                                                        }}
+                                                    />
+                                                    <BoolCell
+                                                        value={soldier.equipment?.vest}
+                                                        onChange={(val) => {
+                                                            const newEquipment = {
+                                                                ...(soldier.equipment || {}),
+                                                                vest: val
+                                                            };
+                                                            updateCheckout(soldier.id, 'equipment', newEquipment);
+                                                        }}
+                                                    />
                                                     <td>
                                                         <button
                                                             className="btn btn-danger btn-small"
@@ -988,327 +1049,235 @@
         }
 
         function LinksView() {
-            const links = [
-                {
-                    title: 'טופס חתימה על ציוד',
-                    url: 'https://maorshitrit0-oss.github.io/plugat-kaf-equipment-/soldier-signup-UPDATED.html',
-                    description: 'קישור לשליחה לחיילים לחתימה על ציוד'
-                },
-                {
-                    title: 'טופס דיווח תקלות',
-                    url: 'https://maorshitrit0-oss.github.io/plugat-kaf-equipment-/fault-report-UPDATED.html',
-                    description: 'קישור לשליחה לחיילים לדיווח תקלות'
-                },
-                {
-                    title: 'מערכת ניהול',
-                    url: 'https://maorshitrit0-oss.github.io/plugat-kaf-equipment-/equipment-manager-main-UPDATED.html',
-                    description: 'קישור למערכת הניהול (רק למפקד)'
-                }
-            ];
+            const [alert, setAlert] = useState(null);
+            const baseUrl = window.location.href.replace(/\/[^/]*$/, '/');
+            
+            const signupUrl = baseUrl + 'soldier-signup-UPDATED.html';
+            const faultUrl = baseUrl + 'fault-report-UPDATED.html';
+            const managerUrl = baseUrl + 'equipment-manager-main-UPDATED.html';
+
+            const copyLink = (url, type) => {
+                navigator.clipboard.writeText(url);
+                setAlert({ type: 'success', message: `קישור ${type} הועתק!` });
+                setTimeout(() => setAlert(null), 2000);
+            };
 
             return (
                 <div>
+                    {alert && (
+                        <div className={`alert alert-${alert.type}`}>
+                            {alert.message}
+                        </div>
+                    )}
+
                     <div className="section">
-                        <h2 className="section-title">קישורים לטפסים</h2>
-                        <p style={{marginBottom: '1.5rem', color: '#666'}}>
-                            העתק את הקישורים ושלח לחיילים דרך WhatsApp/Telegram
-                        </p>
-                        {links.map((link, index) => (
-                            <div key={index} style={{
-                                background: '#f8f8f8',
-                                padding: '1.5rem',
-                                borderRadius: '8px',
-                                marginBottom: '1rem',
-                                border: '2px solid #e0e0e0'
-                            }}>
-                                <h3 style={{
-                                    fontSize: '1.1rem',
-                                    fontWeight: '600',
-                                    marginBottom: '0.5rem',
-                                    color: '#2c5f2d'
-                                }}>
-                                    {link.title}
-                                </h3>
-                                <p style={{
-                                    fontSize: '0.9rem',
-                                    color: '#666',
-                                    marginBottom: '1rem'
-                                }}>
-                                    {link.description}
-                                </p>
-                                <div style={{
-                                    display: 'flex',
-                                    gap: '0.5rem',
-                                    alignItems: 'center'
-                                }}>
-                                    <input
-                                        type="text"
-                                        value={link.url}
-                                        readOnly
-                                        style={{
-                                            flex: 1,
-                                            padding: '0.75rem',
-                                            border: '1px solid #ddd',
-                                            borderRadius: '4px',
-                                            fontFamily: 'monospace',
-                                            fontSize: '0.85rem'
-                                        }}
-                                        onClick={(e) => e.target.select()}
-                                    />
-                                    <button
-                                        className="btn"
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(link.url);
-                                            alert('✓ הקישור הועתק!');
-                                        }}
-                                        style={{minWidth: '100px'}}
-                                    >
-                                        📋 העתק
-                                    </button>
-                                </div>
+                        <h2 className="section-title">קישורים</h2>
+                        
+                        <div className="link-box">
+                            <div className="link-header">📝 טופס חתימה על ציוד</div>
+                            <p style={{color: '#666', marginBottom: '0.5rem', fontSize: '0.9rem'}}>
+                                לחיילים - למלא ולחתום על הציוד
+                            </p>
+                            <div className="link-url">
+                                <input type="text" value={signupUrl} readOnly onClick={(e) => e.target.select()} />
+                                <button className="btn" onClick={() => copyLink(signupUrl, 'חתימה')}>
+                                    📋 העתק
+                                </button>
                             </div>
-                        ))}
+                        </div>
+
+                        <div className="link-box">
+                            <div className="link-header">⚠️ טופס דיווח תקלות</div>
+                            <p style={{color: '#666', marginBottom: '0.5rem', fontSize: '0.9rem'}}>
+                                לחיילים - לדווח על תקלות בציוד
+                            </p>
+                            <div className="link-url">
+                                <input type="text" value={faultUrl} readOnly onClick={(e) => e.target.select()} />
+                                <button className="btn" onClick={() => copyLink(faultUrl, 'תקלות')}>
+                                    📋 העתק
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="link-box">
+                            <div className="link-header">🎯 מערכת ניהול ציוד</div>
+                            <p style={{color: '#666', marginBottom: '0.5rem', fontSize: '0.9rem'}}>
+                                למפקד - גישה למערכת הניהול
+                            </p>
+                            <div className="link-url">
+                                <input type="text" value={managerUrl} readOnly onClick={(e) => e.target.select()} />
+                                <button className="btn" onClick={() => copyLink(managerUrl, 'ניהול')}>
+                                    📋 העתק
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             );
         }
 
-                function ReportView({ checkouts, faults }) {
+        function ReportView({ checkouts, faults }) {
+            const [savedReport, setSavedReport] = useState(null);
             const [isEditing, setIsEditing] = useState(false);
-            const [editedReport, setEditedReport] = useState('');
-            const [savedReport, setSavedReport] = useState('');
+            const [editedText, setEditedText] = useState('');
+            const [isLoading, setIsLoading] = useState(true);
 
-            // Load saved report from Firebase
+            // Load saved report from Firebase ONCE (only if it already includes the new faults section)
             useEffect(() => {
-                const loadSavedReport = async () => {
+                const load = async () => {
                     try {
-                        const response = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/dailyReport.json');
-                        if (response.ok) {
-                            const data = await response.json();
-                            if (data) {
-                                setSavedReport(data.content || '');
+                        const res = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/dailyReport.json');
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && typeof data.content === 'string') {
+                                const hasFaultsSection = data.content.includes('תקלות פתוחות');
+                                if (hasFaultsSection) {
+                                    setSavedReport(data.content);
+                                }
                             }
                         }
-                    } catch (error) {
-                        console.error('Error loading report:', error);
+                    } catch (e) {
+                        console.error('Error loading report:', e);
+                    } finally {
+                        setIsLoading(false);
                     }
                 };
-                loadSavedReport();
+                load();
             }, []);
 
             const generateReport = () => {
-                // If there's a saved report, use it
-                if (savedReport) {
-                    return savedReport;
+                let r = 'דוח צ\n*פלוגה כ׳*\n\n';
+
+                r += 'חפק:\n';
+                r += 'משואה: [מספר סידורי]\n';
+                r += 'כרטיס: [מספר סידורי]\n';
+                r += 'משיב מיקום: [מספר סידורי]\n\n';
+
+                r += 'סיור:\n';
+                r += 'משואה: קיים במשקשיה\n';
+                r += 'כרטיס: קיים במשקשיה\n';
+                r += 'משיב מיקום: קיים במשקשיה\n\n';
+
+                r += 'חמל:\n';
+                r += 'כרטיס מחשב משואה: [מספר סידורי]\n\n';
+
+                r += 'משרד מ״פ:\n';
+                r += 'כרטיס מחשב משואה: [מספר סידורי]\n';
+                r += 'כרטיס מחשב מנהלתי: [מספר סידורי]\n\n';
+
+                r += 'חדן:\n';
+                r += 'משיב מיקום: [מספר סידורי]\n';
+                r += 'כרטיס: [מספר סידורי]\n\n';
+
+                // ליונטים
+                r += 'ליונטים:\n';
+                const lionets = checkouts.filter(c => c.unit === 'חפק' || c.unit === 'חמל');
+                lionets.forEach(s => {
+                    const last4 = (s.soldierId || '????').slice(-4);
+                    if (s.role === 'מפ') r += `מפ ${last4}\n`;
+                    else if (s.role === 'סמפ') r += `סמפ ${last4}\n`;
+                    else r += `${last4}\n`;
+                });
+                r += '\n';
+
+                // מחלקות
+                for (let i = 1; i <= 3; i++) {
+                    const squad = checkouts.filter(c => c.unit === `מחלקה ${i}`);
+                    if (squad.length === 0) continue;
+                    r += `מחלקה ${i}:\n`;
+                    squad.forEach(s => {
+                        const last4 = (s.soldierId || '????').slice(-4);
+                        if (s.role === 'ממ') r += `${last4} מ״מ\n`;
+                        else r += `${last4}\n`;
+                    });
+                    r += '\n';
                 }
-
-                // Otherwise, generate default report
-                let report = 'דוח צ\n*פלוגה כ׳*\n\n';
-
-                // חפק
-                report += 'חפק:\n';
-                report += '  משואה: [מספר סידורי]\n';
-                report += '  כרטיס: [מספר סידורי]\n';
-                report += '  משיב מיקום: [מספר סידורי]\n\n';
-
-                // סיור
-                report += 'סיור:\n';
-                report += '  משואה: [מספר סידורי]\n';
-                report += '  כרטיס: [מספר סידורי]\n';
-                report += '  משיב מיקום: [מספר סידורי]\n\n';
 
                 // חמל
-                report += 'חמל:\n';
-                report += '  כרטיס מחשב משואה: [מספר סידורי]\n';
-                report += '  מצפין: [מספר סידורי]\n\n';
-
-                // משרד מפ
-                report += 'משרד מ״פ:\n';
-                report += '  כרטיס מחשב משואה: [מספר סידורי]\n';
-                report += '  כרטיס מחשב מנהלתי: [מספר סידורי]\n\n';
-
-                // חדן
-                report += 'חדן:\n';
-                report += '  משואה: [מספר סידורי]\n';
-                report += '  משיב מיקום: [מספר סידורי]\n';
-                report += '  כרטיס: [מספר סידורי]\n\n';
-
-                // ליונטים - מפ/סמפ בראש, שאר החיילים
-                report += 'ליונטים:\n';
-                
-                const lionetSoldiers = checkouts.filter(c => 
-                    c.unit === 'חמל' || c.unit === 'חפק' || c.unit === 'מפלג'
-                );
-                
-                // מפ
-                const commanders = lionetSoldiers.filter(s => s.role === 'מפ');
-                commanders.forEach(s => {
-                    const last4 = s.soldierId.slice(-4);
-                    report += `  מפ ${last4}\n`;
-                });
-                
-                // סמפ
-                const deputies = lionetSoldiers.filter(s => s.role === 'סמפ');
-                deputies.forEach(s => {
-                    const last4 = s.soldierId.slice(-4);
-                    report += `  סמפ ${last4}\n`;
-                });
-                
-                // שאר החיילים (לא מפ/סמפ/ממ)
-                const others = lionetSoldiers.filter(s => 
-                    s.role !== 'מפ' && s.role !== 'סמפ' && s.role !== 'ממ'
-                );
-                others.forEach(s => {
-                    const last4 = s.soldierId.slice(-4);
-                    report += `  ${last4}\n`;
-                });
-                
-                report += '\n';
-
-                // מחלקות 1-3
-                for (let i = 1; i <= 3; i++) {
-                    const unitSoldiers = checkouts.filter(c => c.unit === `מחלקה ${i}`);
-                    if (unitSoldiers.length === 0) continue;
-                    
-                    report += `מחלקה ${i}:\n`;
-                    
-                    // ממ בהתחלה
-                    const squadLeaders = unitSoldiers.filter(s => s.role === 'ממ');
-                    squadLeaders.forEach(s => {
-                        const last4 = s.soldierId.slice(-4);
-                        report += `  מ״מ ${last4}\n`;
+                const hamal = checkouts.filter(c => c.unit === 'חמל' && c.role === 'מפ');
+                if (hamal.length > 0) {
+                    r += 'חמל:\n';
+                    hamal.forEach(s => {
+                        const last4 = (s.soldierId || '????').slice(-4);
+                        r += `חמל ${last4}\n`;
                     });
-                    
-                    // שאר החיילים
-                    const regularSoldiers = unitSoldiers.filter(s => s.role !== 'ממ');
-                    regularSoldiers.forEach(s => {
-                        const last4 = s.soldierId.slice(-4);
-                        report += `  ${last4}\n`;
-                    });
-                    
-                    report += '\n';
-                }
-
-                // חמל (רק מפ חמל)
-                const hamalCommanders = checkouts.filter(c => 
-                    c.unit === 'חמל' && c.role === 'מפ'
-                );
-                if (hamalCommanders.length > 0) {
-                    report += 'חמל:\n';
-                    hamalCommanders.forEach(s => {
-                        const last4 = s.soldierId.slice(-4);
-                        report += `  חמל ${last4}\n`;
-                    });
-                    report += '\n';
+                    r += '\n';
                 }
 
                 // תקלות
                 const pendingFaults = faults.filter(f => f.status === 'pending');
-                report += 'סטטוס תקלות פלוגה כ׳ (יוקדים):\n';
+                r += 'תקלות פתוחות:\n';
                 if (pendingFaults.length === 0) {
-                    report += '  אין תקלות\n';
+                    r += 'אין תקלות פתוחות\n';
                 } else {
-                    pendingFaults.forEach((fault, index) => {
-                        let faultText = fault.description || 'ללא תיאור';
-                        if (fault.otherLocation) {
-                            faultText += ` ב${fault.otherLocation}`;
-                        }
-                        report += `${index + 1}. ${faultText}\n`;
+                    pendingFaults.forEach(f => {
+                        const desc = f.description || '';
+                        r += `- ${desc || 'ללא תיאור'}\n`;
                     });
                 }
 
-                return report;
+                return r;
             };
 
-            const report = generateReport();
-
-            const handleEdit = () => {
-                setEditedReport(report);
-                setIsEditing(true);
-            };
-
-            const handleSave = async () => {
+            const save = async () => {
                 try {
-                    // Save to Firebase
                     await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/dailyReport.json', {
                         method: 'PUT',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ content: editedReport, lastUpdated: new Date().toISOString() })
+                        body: JSON.stringify({
+                            content: editedText,
+                            updated: new Date().toISOString()
+                        })
                     });
-                    
-                    setSavedReport(editedReport);
+                    setSavedReport(editedText);
                     setIsEditing(false);
-                    alert('✓ הדוח נשמר בהצלחה!');
-                } catch (error) {
-                    console.error('Error saving report:', error);
-                    alert('❌ שגיאה בשמירת הדוח');
+                    alert('✓ הדוח נשמר');
+                } catch (e) {
+                    alert('❌ שגיאה בשמירה');
                 }
             };
 
-            const handleCancel = () => {
-                setIsEditing(false);
-                setEditedReport('');
-            };
+            // Show the saved report if exists, otherwise generate
+            const displayReport = savedReport !== null ? savedReport : generateReport();
 
-            const copyReport = () => {
-                const textToCopy = isEditing ? editedReport : report;
-                navigator.clipboard.writeText(textToCopy);
-                alert('✓ הדוח הועתק ללוח');
-            };
+            if (isLoading) {
+                return (
+                    <div className="section">
+                        <p style={{textAlign:'center',padding:'2rem'}}>טוען דוח...</p>
+                    </div>
+                );
+            }
 
             return (
                 <div>
                     <div className="section">
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
-                            <h2 className="section-title">דוח יומי לגדוד</h2>
-                            <div style={{display: 'flex', gap: '0.5rem'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:'1rem'}}>
+                            <h2 className="section-title">דוח יומי</h2>
+                            <div style={{display:'flex',gap:'0.5rem'}}>
                                 {!isEditing ? (
                                     <>
-                                        <button className="btn" onClick={handleEdit}>
-                                            ✏️ ערוך דוח
+                                        <button className="btn" onClick={() => { setEditedText(displayReport); setIsEditing(true); }}>
+                                            ✏️ ערוך
                                         </button>
-                                        <button className="btn" onClick={copyReport}>
-                                            📋 העתק דוח
+                                        <button className="btn" onClick={() => { navigator.clipboard.writeText(displayReport); alert('✓ הדוח הועתק'); }}>
+                                            📋 העתק
                                         </button>
                                     </>
                                 ) : (
                                     <>
-                                        <button 
-                                            className="btn" 
-                                            onClick={handleSave}
-                                            style={{background: '#4caf50'}}
-                                        >
-                                            ✓ שמור
-                                        </button>
-                                        <button 
-                                            className="btn" 
-                                            onClick={handleCancel}
-                                            style={{background: '#999'}}
-                                        >
-                                            ✕ ביטול
-                                        </button>
+                                        <button className="btn" onClick={save} style={{background:'#4caf50'}}>✓ שמור</button>
+                                        <button className="btn" onClick={() => setIsEditing(false)} style={{background:'#999'}}>✕ ביטול</button>
                                     </>
                                 )}
                             </div>
                         </div>
-
                         {!isEditing ? (
-                            <div className="report-preview">{report}</div>
+                            <div className="report-preview">{displayReport}</div>
                         ) : (
                             <textarea
-                                value={editedReport}
-                                onChange={(e) => setEditedReport(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    minHeight: '600px',
-                                    padding: '1rem',
-                                    fontFamily: 'monospace',
-                                    fontSize: '0.95rem',
-                                    border: '2px solid #2c5f2d',
-                                    borderRadius: '4px',
-                                    resize: 'vertical',
-                                    direction: 'rtl'
-                                }}
+                                value={editedText}
+                                onChange={(e) => setEditedText(e.target.value)}
+                                style={{width:'100%',minHeight:'500px',padding:'1rem',fontFamily:'monospace',fontSize:'0.95rem',border:'2px solid #2c5f2d',borderRadius:'4px',direction:'rtl'}}
                             />
                         )}
                     </div>
@@ -1316,63 +1285,58 @@
             );
         }
 
+        function FaultsView({ faults, updateFaultStatus, deleteFault }) {
+            const pending = faults.filter(f => f.status === 'pending');
+            const resolved = faults.filter(f => f.status === 'resolved');
 
-
-
-        function FaultsView({ faults, updateFaultStatus }) {
-            const pendingFaults = faults.filter(f => f.status === 'pending');
-            const resolvedFaults = faults.filter(f => f.status === 'resolved');
-
-            const formatDate = (dateString) => {
-                return new Date(dateString).toLocaleString('he-IL', {
-                    year: 'numeric',
-                    month: '2-digit',
+            const formatDate = (d) => {
+                return new Date(d).toLocaleString('he-IL', {
                     day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit'
                 });
             };
 
+            const getTimeAgo = (d) => {
+                const diff = Date.now() - new Date(d);
+                const mins = Math.floor(diff / 60000);
+                const hours = Math.floor(diff / 3600000);
+                const days = Math.floor(diff / 86400000);
+                if (mins < 60) return `${mins} דקות`;
+                if (hours < 24) return `${hours} שעות`;
+                return `${days} ימים`;
+            };
+
             return (
                 <div>
                     <div className="section">
-                        <h2 className="section-title">תקלות ממתינות ({pendingFaults.length})</h2>
-
-                        {pendingFaults.length === 0 ? (
-                            <p style={{textAlign: 'center', color: '#4caf50', padding: '2rem'}}>
-                                ✓ אין תקלות ממתינות
-                            </p>
+                        <h2 className="section-title">תקלות פתוחות ({pending.length})</h2>
+                        {pending.length === 0 ? (
+                            <p style={{textAlign:'center',color:'#4caf50',padding:'2rem'}}>✓ אין תקלות פתוחות</p>
                         ) : (
-                            pendingFaults.map(fault => (
-                                <div key={fault.id} className="fault-item">
-                                    <div style={{marginBottom: '0.5rem'}}>
-                                        <strong style={{fontSize: '1.1rem'}}>{fault.soldierName}</strong> - {fault.unit}
+                            pending.map(f => (
+                                <div key={f.id} className="fault-item">
+                                    <div style={{marginBottom:'0.5rem'}}>
+                                        <strong>{f.soldierName}</strong> - {f.unit}
+                                        {f.role && <span> ({f.role})</span>}
                                     </div>
-                                    <div style={{marginBottom: '0.5rem'}}>
-                                        מ.א: {fault.soldierId}
+                                    <div style={{marginBottom:'0.5rem'}}>מ.א: {f.soldierId}</div>
+                                    <div style={{marginBottom:'0.5rem'}}>
+                                        <strong>ציוד:</strong> {f.equipmentType}
+                                        {f.otherLocation && <span> - {f.otherLocation}</span>}
                                     </div>
-                                    <div style={{marginBottom: '0.5rem'}}>
-                                        <strong>ציוד:</strong> {fault.equipmentType}
-                                        {fault.otherLocation && <span> ({fault.otherLocation})</span>}
+                                    <div style={{background:'white',padding:'0.5rem',borderRadius:'4px',marginBottom:'0.5rem'}}>
+                                        {f.description}
                                     </div>
-                                    <div style={{
-                                        background: 'white',
-                                        padding: '0.75rem',
-                                        borderRadius: '4px',
-                                        marginBottom: '0.5rem',
-                                        border: '1px solid #e0e0e0'
-                                    }}>
-                                        <strong>תיאור התקלה:</strong><br/>
-                                        {fault.description}
+                                    <div style={{fontSize:'0.85rem',color:'#666',marginBottom:'0.25rem'}}>
+                                        📅 נפתח: {formatDate(f.date)}
                                     </div>
-                                    <div style={{fontSize: '0.85rem', color: '#666', marginBottom: '0.75rem'}}>
-                                        📅 דווח ב: {formatDate(fault.date)}
+                                    <div style={{fontSize:'0.85rem',color:'#d32f2f',fontWeight:'bold',marginBottom:'0.5rem'}}>
+                                        ⏱️ לפני {getTimeAgo(f.date)}
                                     </div>
-                                    <button 
-                                        className="btn"
-                                        onClick={() => updateFaultStatus(fault.id, 'resolved')}
-                                        style={{background: '#4caf50'}}
-                                    >
+                                    <button className="btn" onClick={() => updateFaultStatus(f.id, 'resolved')}>
                                         ✓ סמן כטופל
                                     </button>
                                 </div>
@@ -1381,70 +1345,58 @@
                     </div>
 
                     <div className="section">
-                        <h2 className="section-title">היסטוריית תקלות ({resolvedFaults.length})</h2>
-                        
-                        {resolvedFaults.length === 0 ? (
-                            <p style={{textAlign: 'center', color: '#999', padding: '2rem'}}>
-                                אין תקלות שטופלו
-                            </p>
+                        <h2 className="section-title">תקלות שטופלו ({resolved.length})</h2>
+                        {resolved.length === 0 ? (
+                            <p style={{textAlign:'center',color:'#999',padding:'2rem'}}>אין תקלות שטופלו</p>
                         ) : (
-                            <div>
-                                {resolvedFaults.slice().reverse().map(fault => (
-                                    <div key={fault.id} className="fault-item fault-resolved" style={{
-                                        background: '#f0f7f0',
-                                        border: '2px solid #c8e6c9'
-                                    }}>
-                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'start'}}>
-                                            <div style={{flex: 1}}>
-                                                <div style={{marginBottom: '0.5rem'}}>
-                                                    <strong>{fault.soldierName}</strong> - {fault.unit}
-                                                </div>
-                                                <div style={{marginBottom: '0.5rem'}}>
-                                                    מ.א: {fault.soldierId}
-                                                </div>
-                                                <div style={{marginBottom: '0.5rem'}}>
-                                                    <strong>ציוד:</strong> {fault.equipmentType}
-                                                    {fault.otherLocation && <span> ({fault.otherLocation})</span>}
-                                                </div>
-                                                <div style={{
-                                                    background: 'white',
-                                                    padding: '0.5rem',
-                                                    borderRadius: '4px',
-                                                    marginBottom: '0.5rem',
-                                                    fontSize: '0.95rem'
-                                                }}>
-                                                    {fault.description}
-                                                </div>
-                                                <div style={{fontSize: '0.85rem', color: '#666'}}>
-                                                    📅 דווח: {formatDate(fault.date)}
-                                                </div>
-                                                {fault.resolvedDate && (
-                                                    <div style={{fontSize: '0.85rem', color: '#4caf50', fontWeight: '600'}}>
-                                                        ✓ טופל: {formatDate(fault.resolvedDate)}
-                                                    </div>
-                                                )}
+                            resolved.slice().reverse().map(f => (
+                                <div key={f.id} className="fault-item fault-resolved">
+                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'start'}}>
+                                        <div style={{flex:1}}>
+                                            <div style={{marginBottom:'0.5rem'}}>
+                                                <strong>{f.soldierName}</strong> - {f.unit}
+                                                {f.role && <span> ({f.role})</span>}
                                             </div>
-                                            <div style={{
-                                                background: '#4caf50',
-                                                color: 'white',
-                                                padding: '0.5rem 1rem',
-                                                borderRadius: '20px',
-                                                fontSize: '0.85rem',
-                                                fontWeight: '600'
-                                            }}>
-                                                ✓ טופל
+                                            <div style={{marginBottom:'0.5rem'}}>
+                                                <strong>ציוד:</strong> {f.equipmentType}
+                                                {f.otherLocation && <span> - {f.otherLocation}</span>}
                                             </div>
+                                            <div style={{background:'white',padding:'0.5rem',borderRadius:'4px',marginBottom:'0.5rem',fontSize:'0.95rem'}}>
+                                                {f.description}
+                                            </div>
+                                            <div style={{fontSize:'0.85rem',color:'#666'}}>
+                                                📅 נפתח: {formatDate(f.date)}
+                                            </div>
+                                            {f.resolvedDate && (
+                                                <div style={{fontSize:'0.85rem',color:'#4caf50',fontWeight:'600'}}>
+                                                    ✓ טופל: {formatDate(f.resolvedDate)}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div style={{display:'flex', flexDirection:'column', gap:'0.5rem'}}>
+                                            <button 
+                                                className="btn"
+                                                onClick={() => updateFaultStatus(f.id, 'pending')}
+                                                style={{background:'#ff9800'}}
+                                            >
+                                                ↩️ החזר לפתוח
+                                            </button>
+                                            <button 
+                                                className="btn btn-danger"
+                                                onClick={() => deleteFault(f.id)}
+                                            >
+                                                🗑️ מחק תקלה
+                                            </button>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ))
                         )}
                     </div>
                 </div>
             );
         }
 
-        
         ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>
