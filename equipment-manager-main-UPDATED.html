@@ -611,6 +611,14 @@
                 }
             };
 
+            const updateFaultDescription = (faultId, newDescription) => {
+                const newFaults = faults.map(f => 
+                    f.id === faultId ? { ...f, description: newDescription } : f
+                );
+                storage.save('faults', newFaults);
+                setFaults(newFaults);
+            };
+
             // Loading auth / password config
             if (isAuthLoading || !passwordHash) {
                 return (
@@ -1310,9 +1318,10 @@
                                         <strong>ציוד:</strong> {f.equipmentType}
                                         {f.otherLocation && <span> - {f.otherLocation}</span>}
                                     </div>
-                                    <div style={{background:'white',padding:'0.5rem',borderRadius:'4px',marginBottom:'0.5rem'}}>
-                                        {f.description}
-                                    </div>
+                                    <FaultDescription 
+                                        fault={f} 
+                                        onUpdate={updateFaultDescription} 
+                                    />
                                     <div style={{fontSize:'0.85rem',color:'#666',marginBottom:'0.25rem'}}>
                                         📅 נפתח: {formatDate(f.date)}
                                     </div>
@@ -1376,6 +1385,42 @@
                             ))
                         )}
                     </div>
+                </div>
+            );
+        }
+        function FaultDescription({ fault, onUpdate }) {
+            const [isEditing, setIsEditing] = React.useState(false);
+            const [text, setText] = React.useState(fault.description);
+
+            if (isEditing) {
+                return (
+                    <div style={{ marginBottom: '0.5rem' }}>
+                        <textarea
+                            value={text}
+                            onChange={(e) => setText(e.target.value)}
+                            onBlur={() => {
+                                onUpdate(fault.id, text);
+                                setIsEditing(false);
+                            }}
+                            autoFocus
+                            style={{
+                                width: '100%', padding: '0.5rem', fontFamily: 'inherit',
+                                border: '2px solid #2c5f2d', borderRadius: '4px', direction: 'rtl'
+                            }}
+                        />
+                    </div>
+                );
+            }
+
+            return (
+                <div 
+                    onClick={() => { setText(fault.description); setIsEditing(true); }}
+                    style={{
+                        background: 'white', padding: '0.5rem', borderRadius: '4px',
+                        marginBottom: '0.5rem', cursor: 'pointer', border: '1px dashed #ccc'
+                    }}
+                >
+                    {fault.description || '(לחץ להוספת תיאור)'} ✏️
                 </div>
             );
         }
