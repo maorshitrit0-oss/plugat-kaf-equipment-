@@ -538,6 +538,23 @@
                 setFaults(newFaults);
             };
 
+            const updateFaultStatus = (faultId, newStatus) => {
+                const newFaults = faults.map(f => {
+                    if (f.id === faultId) {
+                        return { 
+                            ...f, 
+                            status: newStatus,
+                            // אם הסטטוס הופך לטופל, מוסיפים תאריך סגירה
+                            resolvedDate: newStatus === 'resolved' ? new Date().toISOString() : null 
+                        };
+                    }
+                    return f;
+                });
+                
+                storage.save('faults', newFaults);
+                setFaults(newFaults);
+            };
+
             const deleteCheckout = (id) => {
                 if (confirm('האם אתה בטוח שברצונך למחוק רישום זה?')) {
                     const newCheckouts = checkouts.filter(c => c.id !== id);
