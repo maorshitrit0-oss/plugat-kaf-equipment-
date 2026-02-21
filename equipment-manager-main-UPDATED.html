@@ -725,6 +725,7 @@
                             <FaultsView 
                                 faults={faults} 
                                 updateFaultStatus={updateFaultStatus} 
+                                updateFaultDescription={updateFaultDescription}
                                 deleteFault={deleteFault}
                             />
                         )}
@@ -1276,7 +1277,7 @@
             );
         }
 
-        function FaultsView({ faults, updateFaultStatus, deleteFault }) {
+        function FaultsView({ faults, updateFaultStatus, updateFaultDescription, deleteFault }) {
             const pending = faults.filter(f => f.status === 'pending');
             const resolved = faults.filter(f => f.status === 'resolved');
 
