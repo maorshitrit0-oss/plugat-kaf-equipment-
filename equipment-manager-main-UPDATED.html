@@ -2069,17 +2069,6 @@
                             style={{ display: 'none' }} disabled={uploading} />
                     </label>
 
-                    {/* כפתור מצלמה */}
-                    <button onClick={openCamera} disabled={uploading} style={{
-                        background: '#1565c0', color: 'white',
-                        padding: '0.7rem 1.5rem', borderRadius: '6px',
-                        cursor: uploading ? 'not-allowed' : 'pointer',
-                        fontWeight: '600', fontSize: '0.95rem',
-                        opacity: uploading ? 0.7 : 1, border: 'none'
-                    }}>
-                        📷 צילום מהמצלמה
-                    </button>
-
                     {uploading && <span style={{ color: '#2c5f2d', fontWeight: '600' }}>⏳ מעלה...</span>}
                 </div>
 
