@@ -1936,232 +1936,214 @@
         );
       }
       function SignaturesView() {
-        const [images, setImages] = React.useState([]);
-        const [isLoading, setIsLoading] = React.useState(true);
-        const [uploading, setUploading] = React.useState(false);
+    const [images, setImages] = React.useState([]);
+    const [isLoading, setIsLoading] = React.useState(true);
+    const [uploading, setUploading] = React.useState(false);
+    const [showCamera, setShowCamera] = React.useState(false);  // 👈 NEW
+    const [stream, setStream] = React.useState(null);            // 👈 NEW
+    const videoRef = React.useRef(null);                         // 👈 NEW
+    const canvasRef = React.useRef(null);                        // 👈 NEW
 
-        useEffect(() => {
-          const loadImages = async () => {
+    useEffect(() => {
+        const loadImages = async () => {
             try {
-              const res = await fetch(
-                "https://plugat-kaf-default-rtdb.firebaseio.com/signatureImages.json",
-              );
-              if (res.ok) {
-                const data = await res.json();
-                if (data) {
-                  const arr = Object.keys(data).map((key) => ({
-                    ...data[key],
-                    firebaseId: key,
-                  }));
-                  setImages(arr.sort((a, b) => b.timestamp - a.timestamp));
+                const res = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/signatureImages.json');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data) {
+                        const arr = Object.keys(data).map(key => ({ ...data[key], firebaseId: key }));
+                        setImages(arr.sort((a, b) => b.timestamp - a.timestamp));
+                    }
                 }
-              }
-            } catch (e) {
-              console.error(e);
-            } finally {
-              setIsLoading(false);
-            }
-          };
-          loadImages();
-        }, []);
+            } catch (e) { console.error(e); }
+            finally { setIsLoading(false); }
+        };
+        loadImages();
+    }, []);
 
-        const handleUpload = async (e) => {
-          const files = Array.from(e.target.files);
-          if (!files.length) return;
-          setUploading(true);
+    // 👇 NEW - חיבור סטרים לוידאו
+    React.useEffect(() => {
+        if (showCamera && videoRef.current && stream) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play();
+        }
+    }, [showCamera, stream]);
 
-          for (const file of files) {
+    const handleUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        setUploading(true);
+        for (const file of files) {
             const reader = new FileReader();
             await new Promise((resolve) => {
-              reader.onload = async (ev) => {
-                const base64 = ev.target.result;
-                const newItem = {
-                  base64,
-                  name: file.name,
-                  timestamp: Date.now(),
+                reader.onload = async (ev) => {
+                    const base64 = ev.target.result;
+                    const newItem = { base64, name: file.name, timestamp: Date.now() };
+                    try {
+                        const res = await fetch('https://plugat-kaf-default-rtdb.firebaseio.com/signatureImages.json', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(newItem)
+                        });
+                        const data = await res.json();
+                        setImages(prev => [{ ...newItem, firebaseId: data.name }, ...prev]);
+                    } catch (err) { console.error(err); }
+                    resolve();
                 };
-                try {
-                  const res = await fetch(
-                    "https://plugat-kaf-default-rtdb.firebaseio.com/signatureImages.json",
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify(newItem),
-                    },
-                  );
-                  const data = await res.json();
-                  setImages((prev) => [
-                    { ...newItem, firebaseId: data.name },
-                    ...prev,
-                  ]);
-                } catch (err) {
-                  console.error(err);
-                }
-                resolve();
-              };
-              reader.readAsDataURL(file);
+                reader.readAsDataURL(file);
             });
-          }
-          setUploading(false);
-          e.target.value = "";
-        };
+        }
+        setUploading(false);
+        e.target.value = '';
+    };
 
-        const deleteImage = async (img) => {
-          if (!confirm("למחוק תמונה זו?")) return;
-          try {
-            await fetch(
-              `https://plugat-kaf-default-rtdb.firebaseio.com/signatureImages/${img.firebaseId}.json`,
-              {
-                method: "DELETE",
-              },
-            );
-            setImages((prev) =>
-              prev.filter((i) => i.firebaseId !== img.firebaseId),
-            );
-          } catch (e) {
-            console.error(e);
-          }
-        };
+    // 👇 NEW
+    const openCamera = async () => {
+        try {
+            const mediaStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
+            });
+            setStream(mediaStream);
+            setShowCamera(true);
+        } catch (err) {
+            document.getElementById('fallback-camera-input').click();
+        }
+    };
 
-        return (
-          <div>
+    // 👇 NEW
+    const capturePhoto = () => {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const base64 = canvas.toDataURL('image/jpeg', 0.8);
+        stream.getTracks().forEach(t => t.stop());
+        setShowCamera(false);
+        setStream(null);
+        const newItem = { base64, name: `photo_${Date.now()}.jpg`, timestamp: Date.now() };
+        setUploading(true);
+        fetch('https://plugat-kaf-default-rtdb.firebaseio.com/signatureImages.json', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newItem)
+        }).then(r => r.json()).then(data => {
+            setImages(prev => [{ ...newItem, firebaseId: data.name }, ...prev]);
+            setUploading(false);
+        });
+    };
+
+    // 👇 NEW
+    const closeCamera = () => {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        setShowCamera(false);
+        setStream(null);
+    };
+
+    const deleteImage = async (img) => {
+        if (!confirm('למחוק תמונה זו?')) return;
+        try {
+            await fetch(`https://plugat-kaf-default-rtdb.firebaseio.com/signatureImages/${img.firebaseId}.json`, {
+                method: 'DELETE'
+            });
+            setImages(prev => prev.filter(i => i.firebaseId !== img.firebaseId));
+        } catch (e) { console.error(e); }
+    };
+
+    return (
+        <div>
             <div className="section">
-              <h2 className="section-title">חתימות מול חטיבה</h2>
-<div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-    
-    {/* העלאת תמונה מהגלריה */}
-    <label style={{
-        display: 'inline-block',
-        background: '#2c5f2d',
-        color: 'white',
-        padding: '0.7rem 1.5rem',
-        borderRadius: '6px',
-        cursor: uploading ? 'not-allowed' : 'pointer',
-        fontWeight: '600',
-        fontSize: '0.95rem',
-        opacity: uploading ? 0.7 : 1
-    }}>
-        📁 העלאת תמונות
-        <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleUpload}
-            style={{ display: 'none' }}
-            disabled={uploading}
-        />
-    </label>
+                <h2 className="section-title">חתימות מול חטיבה</h2>
 
-    {/* צילום ישיר מהמצלמה */}
-    <label style={{
-        display: 'inline-block',
-        background: '#1565c0',
-        color: 'white',
-        padding: '0.7rem 1.5rem',
-        borderRadius: '6px',
-        cursor: uploading ? 'not-allowed' : 'pointer',
-        fontWeight: '600',
-        fontSize: '0.95rem',
-        opacity: uploading ? 0.7 : 1
-    }}>
-        📷 צילום / גלריה
-        <input
-            type="file"
-            accept="image/*"
-            onChange={handleUpload}
-            style={{ display: 'none' }}
-            disabled={uploading}
-        />
-    </label>
+                <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    
+                    {/* העלאת תמונה מהגלריה */}
+                    <label style={{
+                        display: 'inline-block', background: '#2c5f2d', color: 'white',
+                        padding: '0.7rem 1.5rem', borderRadius: '6px',
+                        cursor: uploading ? 'not-allowed' : 'pointer',
+                        fontWeight: '600', fontSize: '0.95rem', opacity: uploading ? 0.7 : 1
+                    }}>
+                        📁 העלאת תמונות
+                        <input type="file" accept="image/*" multiple onChange={handleUpload}
+                            style={{ display: 'none' }} disabled={uploading} />
+                    </label>
 
-    {uploading && (
-        <span style={{ color: '#2c5f2d', fontWeight: '600' }}>⏳ מעלה תמונות...</span>
-    )}
-</div>
+                    {/* כפתור מצלמה */}
+                    <button onClick={openCamera} disabled={uploading} style={{
+                        background: '#1565c0', color: 'white',
+                        padding: '0.7rem 1.5rem', borderRadius: '6px',
+                        cursor: uploading ? 'not-allowed' : 'pointer',
+                        fontWeight: '600', fontSize: '0.95rem',
+                        opacity: uploading ? 0.7 : 1, border: 'none'
+                    }}>
+                        📷 צילום מהמצלמה
+                    </button>
 
-              {isLoading ? (
-                <p style={{ textAlign: "center", color: "#666" }}>
-                  טוען תמונות...
-                </p>
-              ) : images.length === 0 ? (
-                <p
-                  style={{
-                    textAlign: "center",
-                    color: "#999",
-                    padding: "2rem",
-                  }}
-                >
-                  עדיין לא הועלו תמונות חתימות
-                </p>
-              ) : (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "repeat(auto-fill, minmax(280px, 1fr))",
-                    gap: "1rem",
-                  }}
-                >
-                  {images.map((img) => (
-                    <div
-                      key={img.firebaseId}
-                      style={{
-                        border: "1px solid #ddd",
-                        borderRadius: "8px",
-                        overflow: "hidden",
-                        background: "white",
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.08)",
-                      }}
-                    >
-                      <img
-                        src={img.base64}
-                        alt={img.name}
-                        style={{
-                          width: "100%",
-                          display: "block",
-                          cursor: "pointer",
-                          maxHeight: "250px",
-                          objectFit: "contain",
-                        }}
-                        onClick={() => window.open(img.base64, "_blank")}
-                      />
-                      <div
-                        style={{
-                          padding: "0.5rem 0.75rem",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          borderTop: "1px solid #eee",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: "0.8rem",
-                            color: "#666",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {new Date(img.timestamp).toLocaleDateString("he-IL")}{" "}
-                          — {img.name}
-                        </span>
-                        <button
-                          className="btn btn-danger btn-small"
-                          onClick={() => deleteImage(img)}
-                        >
-                          מחק
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    {uploading && <span style={{ color: '#2c5f2d', fontWeight: '600' }}>⏳ מעלה...</span>}
                 </div>
-              )}
-            </div>
-          </div>
-        );
-      }
 
+                {/* אלמנטים נסתרים */}
+                <video ref={videoRef} style={{ display: 'none' }} />
+                <canvas ref={canvasRef} style={{ display: 'none' }} />
+                <input id="fallback-camera-input" type="file" accept="image/*"
+                    onChange={handleUpload} style={{ display: 'none' }} />
+
+                {isLoading ? (
+                    <p style={{ textAlign: 'center', color: '#666' }}>טוען תמונות...</p>
+                ) : images.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: '#999', padding: '2rem' }}>
+                        עדיין לא הועלו תמונות חתימות
+                    </p>
+                ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+                        {images.map(img => (
+                            <div key={img.firebaseId} style={{
+                                border: '1px solid #ddd', borderRadius: '8px',
+                                overflow: 'hidden', background: 'white',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.08)'
+                            }}>
+                                <img src={img.base64} alt={img.name}
+                                    style={{ width: '100%', display: 'block', cursor: 'pointer', maxHeight: '250px', objectFit: 'contain' }}
+                                    onClick={() => window.open(img.base64, '_blank')} />
+                                <div style={{ padding: '0.5rem 0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #eee' }}>
+                                    <span style={{ fontSize: '0.8rem', color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {new Date(img.timestamp).toLocaleDateString('he-IL')} — {img.name}
+                                    </span>
+                                    <button className="btn btn-danger btn-small" onClick={() => deleteImage(img)}>מחק</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* מסך מצלמה מלא */}
+            {showCamera && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'black', zIndex: 9999,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <video ref={videoRef} autoPlay playsInline
+                        style={{ width: '100%', maxHeight: '80vh', display: 'block' }} />
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                        <button onClick={capturePhoto} style={{
+                            background: 'white', color: 'black',
+                            padding: '1rem 2rem', borderRadius: '50px',
+                            fontSize: '1.2rem', border: 'none', cursor: 'pointer', fontWeight: '700'
+                        }}>📸 צלם</button>
+                        <button onClick={closeCamera} style={{
+                            background: '#d32f2f', color: 'white',
+                            padding: '1rem 2rem', borderRadius: '50px',
+                            fontSize: '1.2rem', border: 'none', cursor: 'pointer', fontWeight: '700'
+                        }}>✕ ביטול</button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
       ReactDOM.render(<App />, document.getElementById("root"));
     </script>
   </body>
