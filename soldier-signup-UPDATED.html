@@ -285,7 +285,7 @@
             </div>
 
             <div class="form-group">
-                <label>מחלקה / יחידה <span class="required">*</span></label>
+                <label>מחלקה<span class="required">*</span></label>
                 <select id="unit" required>
                     <option value="">בחר מחלקה</option>
                     <option value="מחלקה 1">מחלקה 1</option>
@@ -378,10 +378,10 @@
             const updateRoleOptions = () => {
                 const unit = unitSelect.value;
                 let roles = [];
-                if (unit.startsWith('מחלקה')) roles = ['ממ', 'סמל', 'מכ'];
-                else if (unit === 'חפק') roles = ['מפ', 'סמפ', 'קשר מפ', 'קשר סמפ', 'אחר'];
-                else if (unit === 'חמל') roles = ['חמליסט', 'קמבצ', 'אחר'];
-                else if (unit === 'מפלג') roles = ['רספ', 'סרספ', 'אחר'];
+                if (unit.startsWith('מחלקה')) roles = ['ממ', 'סמל', 'מכ', 'חייל'];
+                else if (unit === 'חפק') roles = ['מפ', 'סמפ', 'קשר מפ', 'קשר סמפ', 'חייל'];
+                else if (unit === 'חמל') roles = ['חמליסט', 'קמבצ', 'חייל'];
+                else if (unit === 'מפלג') roles = ['רספ', 'סרספ', 'חייל'];
 
                 roleSelect.innerHTML = '<option value="">בחר תפקיד</option>';
                 roles.forEach(r => {
