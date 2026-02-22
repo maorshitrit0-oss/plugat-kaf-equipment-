@@ -454,9 +454,9 @@ function LinksView() {
   const [alert, setAlert] = useState(null);
   const baseUrl = window.location.href.replace(/\/[^/]*$/, "/");
 
-  const signupUrl = baseUrl + "soldier-signup-UPDATED.html";
-  const faultUrl = baseUrl + "fault-report-UPDATED.html";
-  const managerUrl = baseUrl + "index.html";
+  const signupUrl = baseUrl + "soldier-signup.html";
+  const faultUrl = baseUrl + "fault-report.html";
+  const managerUrl = baseUrl + "equipment-manager-main.html";
 
   const copyLink = (url, type) => {
     navigator.clipboard.writeText(url);
