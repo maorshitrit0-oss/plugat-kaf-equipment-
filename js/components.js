@@ -575,28 +575,48 @@ function ReportView({ checkouts, faults }) {
       "משרד מ״פ:\nכרטיס מחשב משואה: [מספר סידורי]\nכרטיס מחשב מנהלתי: [מספר סידורי]\n\n";
     r += "חדן:\nמשיב מיקום: [מספר סידורי]\nכרטיס: [מספר סידורי]\n\n";
 
+    const hasLionet = (c) => c.equipment?.lionet?.serialNumber;
+    const last4 = (s) => (s.soldierId || "????").slice(-4);
+    const rolesWithLabel = ["מפ", "סמפ", "קשר מפ", "קשר סמפ", "ממ", "קמבצ", "חמל"];
+    const showRoleAndNumber = (role) => rolesWithLabel.includes(role);
+
     r += "ליונטים:\n";
-    const specialUnits = ["מפ", "סמפ", "חמל", "ממ", "קמבצ"];
-    checkouts
-      .filter((c) => c.equipment?.lionet?.serialNumber)
-      .forEach((s) => {
-        const last4 = (s.soldierId || "????").slice(-4);
-        const showUnit = specialUnits.includes(s.role);
-        r += showUnit ? `${s.role} ${last4}\n` : `${last4}\n`;
-      });
+    const lionetPlatoonRoles = ["מפ", "סמפ", "קשר מפ", "קשר סמפ"];
+    const orderPlatoon = ["מפ", "סמפ", "קשר מפ", "קשר סמפ"];
+    orderPlatoon.forEach((role) => {
+      checkouts
+        .filter((c) => hasLionet(c) && c.role === role)
+        .forEach((s) => {
+          r += `${s.role} ${last4(s)}\n`;
+        });
+    });
     r += "\n";
 
     UNITS.filter((u) => u.includes("מחלקה")).forEach((unitName) => {
-      const squad = checkouts.filter((c) => c.unit === unitName);
+      const squad = checkouts.filter(
+        (c) => c.unit === unitName && hasLionet(c)
+      );
       if (squad.length > 0) {
         r += `${unitName}:\n`;
         squad.forEach((s) => {
-          const last4 = (s.soldierId || "????").slice(-4);
-          r += `${last4}${s.role === "ממ" ? " מ״מ" : ""}\n`;
+          r += showRoleAndNumber(s.role)
+            ? `${s.role} ${last4(s)}\n`
+            : `${last4(s)}\n`;
         });
         r += "\n";
       }
     });
+
+    const hamalSquad = checkouts.filter(
+      (c) => c.unit === "חמל" && hasLionet(c)
+    );
+    if (hamalSquad.length > 0) {
+      r += "חמל:\n";
+      hamalSquad.forEach((s) => {
+        r += `חמל ${last4(s)}\n`;
+      });
+      r += "\n";
+    }
 
     const pendingFaults = faults.filter((f) => f.status === "pending");
     r += "תקלות פתוחות:\n";
