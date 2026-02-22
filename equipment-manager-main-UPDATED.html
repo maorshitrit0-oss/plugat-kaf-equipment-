@@ -2008,52 +2008,27 @@
                 <h2 className="section-title">חתימות מול חטיבה</h2>
 
                 <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-    
-    {/* העלאת תמונה מהגלריה */}
-    <label style={{
-        display: 'inline-block',
-        background: '#2c5f2d',
-        color: 'white',
-        padding: '0.7rem 1.5rem',
-        borderRadius: '6px',
-        cursor: uploading ? 'not-allowed' : 'pointer',
-        fontWeight: '600',
-        fontSize: '0.95rem',
-        opacity: uploading ? 0.7 : 1
-    }}>
-        📁 העלאת תמונות
-        <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleUpload}
-            style={{ display: 'none' }}
-            disabled={uploading}
-        />
-    </label>
-
     {/* צילום ישיר מהמצלמה */}
-    <label style={{
-        display: 'inline-block',
-        background: '#1565c0',
-        color: 'white',
-        padding: '0.7rem 1.5rem',
-        borderRadius: '6px',
-        cursor: uploading ? 'not-allowed' : 'pointer',
-        fontWeight: '600',
-        fontSize: '0.95rem',
-        opacity: uploading ? 0.7 : 1
-    }}>
-        📷 צילום מהמצלמה
-        <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleUpload}
-            style={{ display: 'none' }}
-            disabled={uploading}
-        />
-    </label>
+<label style={{
+    display: 'inline-block',
+    background: '#1565c0',
+    color: 'white',
+    padding: '0.7rem 1.5rem',
+    borderRadius: '6px',
+    cursor: uploading ? 'not-allowed' : 'pointer',
+    fontWeight: '600',
+    fontSize: '0.95rem',
+    opacity: uploading ? 0.7 : 1
+}}>
+    📷 צילום מהמצלמה
+    <input
+        type="file"
+        accept="image/*"
+        onChange={handleUpload}
+        style={{ display: 'none' }}
+        disabled={uploading}
+    />
+</label>
 
     {uploading && (
         <span style={{ color: '#2c5f2d', fontWeight: '600' }}>⏳ מעלה תמונות...</span>
