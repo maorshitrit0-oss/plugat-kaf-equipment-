@@ -977,6 +977,7 @@ function SignaturesView() {
   const [stream, setStream] = useState(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => {
     const loadImages = async () => {
@@ -1218,7 +1219,7 @@ function SignaturesView() {
                     maxHeight: "250px",
                     objectFit: "contain",
                   }}
-                  onClick={() => window.open(img.base64, "_blank")}
+                  onClick={() => setSelectedImage(img)}
                 />
                 <div
                   style={{
@@ -1320,6 +1321,55 @@ function SignaturesView() {
           </div>
         </div>
       )}
+      {selectedImage && (
+  <div
+    onClick={() => setSelectedImage(null)}
+    style={{
+      position: "fixed",
+      top: 0, left: 0, right: 0, bottom: 0,
+      background: "rgba(0,0,0,0.85)",
+      zIndex: 9999,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      cursor: "zoom-out",
+    }}
+  >
+    <img
+      src={selectedImage.base64}
+      alt={selectedImage.name}
+      style={{
+        maxWidth: "95vw",
+        maxHeight: "90vh",
+        objectFit: "contain",
+        borderRadius: "8px",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+      }}
+      onClick={(e) => e.stopPropagation()}
+    />
+    <div style={{ marginTop: "1rem", display: "flex", gap: "1rem", alignItems: "center" }}>
+      <span style={{ color: "white", fontSize: "0.9rem" }}>
+        {selectedImage.name} — {new Date(selectedImage.timestamp).toLocaleDateString("he-IL")}
+      </span>
+      <button
+        onClick={() => setSelectedImage(null)}
+        style={{
+          background: "#d32f2f",
+          color: "white",
+          border: "none",
+          borderRadius: "50px",
+          padding: "0.5rem 1.2rem",
+          cursor: "pointer",
+          fontWeight: "700",
+          fontSize: "1rem",
+        }}
+      >
+        ✕ סגור
+      </button>
+    </div>
+  </div>
+)}
     </div>
   );
 }
