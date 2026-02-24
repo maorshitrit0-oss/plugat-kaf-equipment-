@@ -417,6 +417,11 @@ function App() {
           >
             חתימות מול חטיבה
           </button>
+          <button
+            className={`nav-btn ${currentView === "emdots" ? "active" : ""}`}
+            onClick={() => setCurrentView("emdots")}
+          >
+עמדות          </button>
         </nav>
       </header>
 
@@ -450,6 +455,7 @@ function App() {
           />
         )}
         {currentView === "signatures" && <SignaturesView />}
+        {currentView === "emdots" && <EmdotsView />}
       </main>
     </div>
   );

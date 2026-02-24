@@ -1373,3 +1373,208 @@ function SignaturesView() {
     </div>
   );
 }
+
+function EmdotsView() {
+  const [amadot, setAmadot] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [amada, setAmada] = useState("");
+  const [sogHaציוד, setSogHaציוד] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch(
+          "https://plugat-kaf-default-rtdb.firebaseio.com/amadot.json"
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data) {
+            const arr = Object.keys(data).map((key) => ({
+              ...data[key],
+              firebaseId: key,
+            }));
+            setAmadot(arr.sort((a, b) => b.timestamp - a.timestamp));
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!amada.trim() || !sogHaציוד.trim()) return;
+    setSubmitting(true);
+    const newItem = {
+      amada: amada.trim(),
+      sogHaציוד: sogHaציוד.trim(),
+      timestamp: Date.now(),
+    };
+    try {
+      const res = await fetch(
+        "https://plugat-kaf-default-rtdb.firebaseio.com/amadot.json",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newItem),
+        }
+      );
+      const data = await res.json();
+      setAmadot((prev) => [{ ...newItem, firebaseId: data.name }, ...prev]);
+      setAmada("");
+      setSogHaציוד("");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const deleteRow = async (item) => {
+    if (!confirm("למחוק שורה זו?")) return;
+    try {
+      await fetch(
+        `https://plugat-kaf-default-rtdb.firebaseio.com/amadot/${item.firebaseId}.json`,
+        { method: "DELETE" }
+      );
+      setAmadot((prev) => prev.filter((i) => i.firebaseId !== item.firebaseId));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  return (
+    <div>
+      <div className="section">
+        <h2 className="section-title">עמדות</h2>
+
+        {/* Form */}
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            display: "flex",
+            gap: "0.75rem",
+            flexWrap: "wrap",
+            alignItems: "flex-end",
+            marginBottom: "1.5rem",
+            background: "#f9f9f9",
+            padding: "1rem",
+            borderRadius: "8px",
+            border: "1px solid #e0e0e0",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", flex: 1, minWidth: "180px" }}>
+            <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "#444" }}>
+              עמדה / פילובוקס
+            </label>
+            <input
+              type="text"
+              value={amada}
+              onChange={(e) => setAmada(e.target.value)}
+              placeholder="הזן עמדה או פילובוקס..."
+              style={{
+                padding: "0.6rem 0.75rem",
+                borderRadius: "6px",
+                border: "1px solid #ccc",
+                fontSize: "0.95rem",
+                outline: "none",
+              }}
+            />
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", flex: 1, minWidth: "180px" }}>
+            <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "#444" }}>
+              סוג הציוד
+            </label>
+            <input
+              type="text"
+              value={sogHaציוד}
+              onChange={(e) => setSogHaציוד(e.target.value)}
+              placeholder="הזן סוג ציוד..."
+              style={{
+                padding: "0.6rem 0.75rem",
+                borderRadius: "6px",
+                border: "1px solid #ccc",
+                fontSize: "0.95rem",
+                outline: "none",
+              }}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting || !amada.trim() || !sogHaציוד.trim()}
+            style={{
+              background: "#2c5f2d",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              padding: "0.6rem 1.5rem",
+              fontWeight: "700",
+              fontSize: "0.95rem",
+              cursor: submitting ? "not-allowed" : "pointer",
+              opacity: submitting ? 0.7 : 1,
+              height: "38px",
+            }}
+          >
+            {submitting ? "⏳ שומר..." : "➕ הוסף"}
+          </button>
+        </form>
+
+        {/* Table */}
+        {isLoading ? (
+          <p style={{ textAlign: "center", color: "#666" }}>טוען...</p>
+        ) : amadot.length === 0 ? (
+          <p style={{ textAlign: "center", color: "#999", padding: "2rem" }}>
+            עדיין לא נוספו עמדות
+          </p>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.95rem" }}>
+              <thead>
+                <tr style={{ background: "#2c5f2d", color: "white" }}>
+                  <th style={{ padding: "0.75rem 1rem", textAlign: "right", fontWeight: "600" }}>#</th>
+                  <th style={{ padding: "0.75rem 1rem", textAlign: "right", fontWeight: "600" }}>עמדה / פילובוקס</th>
+                  <th style={{ padding: "0.75rem 1rem", textAlign: "right", fontWeight: "600" }}>סוג הציוד</th>
+                  <th style={{ padding: "0.75rem 1rem", textAlign: "right", fontWeight: "600" }}>תאריך</th>
+                  <th style={{ padding: "0.75rem 1rem", textAlign: "right", fontWeight: "600" }}>פעולות</th>
+                </tr>
+              </thead>
+              <tbody>
+                {amadot.map((item, index) => (
+                  <tr
+                    key={item.firebaseId}
+                    style={{
+                      background: index % 2 === 0 ? "white" : "#f5f5f5",
+                      borderBottom: "1px solid #eee",
+                    }}
+                  >
+                    <td style={{ padding: "0.7rem 1rem", color: "#888" }}>{index + 1}</td>
+                    <td style={{ padding: "0.7rem 1rem", fontWeight: "600" }}>{item.amada}</td>
+                    <td style={{ padding: "0.7rem 1rem" }}>{item.sogHaציוד}</td>
+                    <td style={{ padding: "0.7rem 1rem", color: "#666", fontSize: "0.85rem" }}>
+                      {new Date(item.timestamp).toLocaleDateString("he-IL")}
+                    </td>
+                    <td style={{ padding: "0.7rem 1rem" }}>
+                      <button
+                        className="btn btn-danger btn-small"
+                        onClick={() => deleteRow(item)}
+                      >
+                        מחק
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
